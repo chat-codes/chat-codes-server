@@ -85,6 +85,10 @@ export class ChatCodesChannelServer extends EventEmitter {
 						const editorID = editorsDoc.data[editorIndex].id;
 						const editorContents:string = editorsDoc.data[editorIndex].contents;
 
+						if(lastEvent !== 'edit') {
+							createNewEditGroup.call(this);
+						}
+
 						if(!editedFiles.has(editorID)) {
 							editedFiles.add(editorID);
 							editGroup['files'].push(editorID);
@@ -106,9 +110,7 @@ export class ChatCodesChannelServer extends EventEmitter {
 
 						editGroup['fileContents'][editorID]['valueAfter'] = editorContents;
 
-						if(lastEvent !== 'edit') {
-							createNewEditGroup.call(this);
-						} else {
+						if(lastEvent === 'edit') {
 							editGroup['toVersion'] = editorsDoc.version;
 							editGroup['endTimestamp'] = this.getTimestamp();
 							this.submitOp(chatDoc, {p: ['messages', chatDoc.data.messages.length-1], li: editGroup, ld: _.last(chatDoc.data.messages) }, {source: true});
@@ -171,8 +173,8 @@ export class ChatCodesChannelServer extends EventEmitter {
 		ws.on('message', (str:string) => {
 			try {
 				const data = JSON.parse(str);
-				const {channel} = data;
-				if(data.cc === 1 && channel === this.getShareDBNamespace()) {
+				const {ns} = data;
+				if(data.cc === 1 && ns === this.getShareDBNamespace()) {
 					const {type} = data;
 					if(type === 'editor-event') {
 						this.emit('editor-event', member);
@@ -182,7 +184,7 @@ export class ChatCodesChannelServer extends EventEmitter {
 						this.getEditorValues(version).then((result) => {
 							ws.send(JSON.stringify({
 								messageID,
-								channel,
+								ns,
 								cc: 2,
 								payload: Array.from(result.values())
 							}));
@@ -322,10 +324,19 @@ export class ChatCodesServer {
 	private sharedb;
 	private members:{[id:string]:any} = {};
 	private app = express();
-	private server = http.createServer(this.app);
-	private wss = new WebSocket.Server( { server: this.server } );
+	private server:http.Server;
+	private wss:WebSocket.Server;
 	private channels:Map<string, ChatCodesChannelServer> = new Map();
 	constructor(private shareDBPort:number, private shareDBURL:string) {
+		this.app.use('/:channelName', (req, res, next) => {
+			next();
+		}, express.static(path.join(__dirname, '..', 'cc_web')));
+		this.app.use(express.static(path.join(__dirname, '..', 'cc_web')));
+		// this.app.get('*', (req, res) => {
+		// 	console.log(req);
+		// })
+		this.server = http.createServer(this.app);
+		this.wss = new WebSocket.Server( { server: this.server });
 		this.setupShareDB();
 	}
 	private setupShareDB() {
@@ -345,7 +356,8 @@ export class ChatCodesServer {
 					if(data.cc === 1) {
 						const {type} = data;
 						if(type === 'request-join-room') {
-							const {payload, channel, messageID} = data;
+							const {payload, messageID} = data;
+							const channel:string = payload['channel'];
 							const cs:ChatCodesChannelServer = this.createNamespace(channel);
 							cs.addMember(payload, ws).then(() => {
 								ws.send(JSON.stringify({

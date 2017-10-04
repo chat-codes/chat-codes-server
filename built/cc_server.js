@@ -79,6 +79,9 @@ class ChatCodesChannelServer extends events_1.EventEmitter {
                         const editorIndex = p[0];
                         const editorID = editorsDoc.data[editorIndex].id;
                         const editorContents = editorsDoc.data[editorIndex].contents;
+                        if (lastEvent !== 'edit') {
+                            createNewEditGroup.call(this);
+                        }
                         if (!editedFiles.has(editorID)) {
                             editedFiles.add(editorID);
                             editGroup['files'].push(editorID);
@@ -98,10 +101,7 @@ class ChatCodesChannelServer extends events_1.EventEmitter {
                         const editorID = editorsDoc.data[editorIndex].id;
                         const editorContents = editorsDoc.data[editorIndex].contents;
                         editGroup['fileContents'][editorID]['valueAfter'] = editorContents;
-                        if (lastEvent !== 'edit') {
-                            createNewEditGroup.call(this);
-                        }
-                        else {
+                        if (lastEvent === 'edit') {
                             editGroup['toVersion'] = editorsDoc.version;
                             editGroup['endTimestamp'] = this.getTimestamp();
                             this.submitOp(chatDoc, { p: ['messages', chatDoc.data.messages.length - 1], li: editGroup, ld: _.last(chatDoc.data.messages) }, { source: true });
@@ -175,8 +175,8 @@ class ChatCodesChannelServer extends events_1.EventEmitter {
         ws.on('message', (str) => {
             try {
                 const data = JSON.parse(str);
-                const { channel } = data;
-                if (data.cc === 1 && channel === this.getShareDBNamespace()) {
+                const { ns } = data;
+                if (data.cc === 1 && ns === this.getShareDBNamespace()) {
                     const { type } = data;
                     if (type === 'editor-event') {
                         this.emit('editor-event', member);
@@ -187,7 +187,7 @@ class ChatCodesChannelServer extends events_1.EventEmitter {
                         this.getEditorValues(version).then((result) => {
                             ws.send(JSON.stringify({
                                 messageID,
-                                channel,
+                                ns,
                                 cc: 2,
                                 payload: Array.from(result.values())
                             }));
@@ -342,9 +342,16 @@ class ChatCodesServer {
         this.shareDBURL = shareDBURL;
         this.members = {};
         this.app = express();
+        this.channels = new Map();
+        this.app.use('/:channelName', (req, res, next) => {
+            next();
+        }, express.static(path.join(__dirname, '..', 'cc_web')));
+        this.app.use(express.static(path.join(__dirname, '..', 'cc_web')));
+        // this.app.get('*', (req, res) => {
+        // 	console.log(req);
+        // })
         this.server = http.createServer(this.app);
         this.wss = new WebSocket.Server({ server: this.server });
-        this.channels = new Map();
         this.setupShareDB();
     }
     setupShareDB() {
@@ -364,7 +371,8 @@ class ChatCodesServer {
                     if (data.cc === 1) {
                         const { type } = data;
                         if (type === 'request-join-room') {
-                            const { payload, channel, messageID } = data;
+                            const { payload, messageID } = data;
+                            const channel = payload['channel'];
                             const cs = this.createNamespace(channel);
                             cs.addMember(payload, ws).then(() => {
                                 ws.send(JSON.stringify({
