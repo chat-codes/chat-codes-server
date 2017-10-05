@@ -17,9 +17,7 @@ function showChannels() {
     var i = 1;
     $('body').html('');
     doc.data['channels'].forEach(function(channel) {
-        // if(topic && topic === channel.topic) {
-        // }
-        if(!channel.archived) {
+        if(!channel.archived && topic === channel.topic) {
             var link = $('<a />');
             var href = window.location.protocol+'//'+window.location.host+'/'+channel.channelName;
             link.attr({

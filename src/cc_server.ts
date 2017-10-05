@@ -26,7 +26,16 @@ export class ChatCodesServer {
 	private channelsDoc:Promise<ShareDB.Doc>;
 	constructor(private shareDBPort:number, private shareDBURL:string) {
 		this.app.use('/channels', express.static(path.join(__dirname, '..', 'channel_pages')));
-		this.app.use('/:channelName', express.static(path.join(__dirname, '..', 'cc_web')));
+		this.app.use('/:channelName', (req, res, next) => {
+			const channelName:string = req.params.channelName;
+			this.isValidChannelName(channelName).then((valid) => {
+				if(valid) {
+					next();
+				} else {
+					res.redirect('/');
+				}
+			});
+		}, express.static(path.join(__dirname, '..', 'cc_web')));
 		this.app.use('/:channelName/:convo', express.static(path.join(__dirname, '..', 'cc_web')));
 
 		this.app.use('/', (req, res, next) => {
@@ -184,6 +193,12 @@ export class ChatCodesServer {
 			});
 		});
 	}
+	private isValidChannelName(channelName:string):Promise<boolean> {
+		const WORD_FILE_NAME:string = 'channel_names.txt'
+		return readFile(path.join(__dirname, '..', WORD_FILE_NAME)).then((words:string) => {
+			return words.indexOf(channelName)>=0 && channelName.indexOf('\n')<0;
+		});
+	}
 	private createChannelName():Promise<string> {
 		const WORD_FILE_NAME:string = 'channel_names.txt'
 		return readFile(path.join(__dirname, '..', WORD_FILE_NAME)).then((words:string) => {
@@ -213,8 +228,8 @@ export class ChatCodesServer {
 }
 
 const optionDefinitions = [
-	{ name: 'usemongo', alias: 'u', type: Boolean, defaultValue: false },
-	{ name: 'mongocreds', alias: 'm', type: String, defaultValue: path.join(__dirname, '..', 'db_creds.json')},
+	{ name: 'usemongo', alias: 'm', type: Boolean, defaultValue: true },
+	{ name: 'mongocreds', alias: 'c', type: String, defaultValue: path.join(__dirname, '..', 'db_creds.json')},
 	{ name: 'port', alias: 'p', type: Number, defaultValue: 8080 },
 ];
 const options = commandLineArgs(optionDefinitions);
