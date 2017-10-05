@@ -15,6 +15,7 @@
         "@types/ws": "^3.0.2",
         "command-line-args": "^4.0.7",
         "express": "^4.15.4",
+        "jquery": "^3.2.1",
         "js-logger": "^1.4.1",
         "node-cleanup": "^2.1.2",
         "ot-text": "^1.0.1",

@@ -10552,12 +10552,22 @@ var EditGroup = (function (_super) {
     };
     ;
     EditGroup.prototype.getEditorStates = function () {
-        var editorStates = __WEBPACK_IMPORTED_MODULE_0_underscore__["flatten"](this.getItems().map(function (delta) { return delta.getEditors(); }));
-        return __WEBPACK_IMPORTED_MODULE_0_underscore__["unique"](editorStates);
+        var editorStates = __WEBPACK_IMPORTED_MODULE_0_underscore__["chain"](this.getItems())
+            .map(function (delta) { return delta.getEditors(); })
+            .flatten()
+            .compact()
+            .unique()
+            .value();
+        return editorStates;
     };
     EditGroup.prototype.getAuthors = function () {
-        var authors = __WEBPACK_IMPORTED_MODULE_0_underscore__["flatten"](this.getItems().map(function (delta) { return delta.getUsers(); }));
-        return __WEBPACK_IMPORTED_MODULE_0_underscore__["unique"](authors);
+        var authors = __WEBPACK_IMPORTED_MODULE_0_underscore__["chain"](this.getItems())
+            .map(function (delta) { return delta.getUsers(); })
+            .flatten()
+            .compact()
+            .unique()
+            .value();
+        return authors;
     };
     EditGroup.prototype.compatibleWith = function (item) {
         return item instanceof EditMessage;
@@ -10632,28 +10642,26 @@ var MessageGroups = (function (_super) {
         _this.messageGroupingTimeThreshold = 5 * 60 * 1000; // The delay between when messages should be in separate groups (5 minutes)
         _this.messageGroups = [];
         _this.chatDocPromise = _this.channelService.getShareDBChat();
-        Promise.all([_this.chatDocPromise, _this.chatUserList.ready]).then(function (_a) {
-            var doc = _a[0], culReady = _a[1];
-            _this.chatDocPromise.then(function (doc) {
-                doc.data['messages'].forEach(function (li) {
-                    _this.addFromSerializedMessage(li);
-                });
-                doc.on('op', function (ops, source) {
-                    ops.forEach(function (op) {
-                        var p = op.p, li = op.li, ld = op.ld;
-                        var field = p[0];
-                        if (field === 'messages') {
-                            var messageGroups = _this.getMessageGroups();
-                            var lastMessageGroup = __WEBPACK_IMPORTED_MODULE_0_underscore__["last"](messageGroups);
-                            if (ld && !__WEBPACK_IMPORTED_MODULE_0_underscore__["isEmpty"](ld) && lastMessageGroup instanceof EditGroup) {
-                                lastMessageGroup.addItem(_this.createMessage(li));
-                                lastMessageGroup.removeItem(0);
-                            }
-                            else if (li) {
-                                _this.addFromSerializedMessage(li);
-                            }
+        _this.ready = Promise.all([_this.chatDocPromise, _this.chatUserList.ready, editorStateTracker.ready]).then(function (info) {
+            var doc = info[0];
+            doc.data['messages'].forEach(function (li) {
+                _this.addFromSerializedMessage(li);
+            });
+            doc.on('op', function (ops, source) {
+                ops.forEach(function (op) {
+                    var p = op.p, li = op.li, ld = op.ld;
+                    var field = p[0];
+                    if (field === 'messages') {
+                        var messageGroups = _this.getMessageGroups();
+                        var lastMessageGroup = __WEBPACK_IMPORTED_MODULE_0_underscore__["last"](messageGroups);
+                        if (ld && !__WEBPACK_IMPORTED_MODULE_0_underscore__["isEmpty"](ld) && lastMessageGroup instanceof EditGroup) {
+                            lastMessageGroup.addItem(_this.createMessage(li));
+                            lastMessageGroup.removeItem(0);
                         }
-                    });
+                        else if (li) {
+                            _this.addFromSerializedMessage(li);
+                        }
+                    }
                 });
             });
         });
@@ -10992,7 +11000,7 @@ var ChatUserList = (function (_super) {
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* WEBPACK VAR INJECTION */(function(__dirname) {/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_underscore__ = __webpack_require__("../../../../../../chat-codes-services/node_modules/underscore/underscore.js");
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_underscore__ = __webpack_require__("../../../../../../chat-codes-services/node_modules/underscore/underscore.js");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_underscore___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0_underscore__);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__chat_user__ = __webpack_require__("../../../../../../chat-codes-services/src/chat-user.ts");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__socket_communication_layer__ = __webpack_require__("../../../../../../chat-codes-services/src/socket-communication-layer.ts");
@@ -11012,33 +11020,6 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
-var __generator = (this && this.__generator) || function (thisArg, body) {
-    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g;
-    return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
-    function verb(n) { return function (v) { return step([n, v]); }; }
-    function step(op) {
-        if (f) throw new TypeError("Generator is already executing.");
-        while (_) try {
-            if (f = 1, y && (t = y[op[0] & 2 ? "return" : op[0] ? "throw" : "next"]) && !(t = t.call(y, op[1])).done) return t;
-            if (y = 0, t) op = [0, t.value];
-            switch (op[0]) {
-                case 0: case 1: t = op; break;
-                case 4: _.label++; return { value: op[1], done: false };
-                case 5: _.label++; y = op[1]; op = [0]; continue;
-                case 7: op = _.ops.pop(); _.trys.pop(); continue;
-                default:
-                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
-                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
-                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
-                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
-                    if (t[2]) _.ops.pop();
-                    _.trys.pop(); continue;
-            }
-            op = body.call(thisArg, _);
-        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
-        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
-    }
-};
 
 
 
@@ -11046,80 +11027,6 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 
 
 var DEBUG = false;
-var USE_PUSHER = false;
-/**
- * Come up with a channel name from a list of words. If we can't find an empty channel, we just start adding
- * numbers to the channel name
- * @param  {any}          commLayer The communication channel service
- * @return {Promise<string>}           A promise whose value will resolve to the name of a channel that is empty
- */
-function generateChannelName(commLayer) {
-    var fs = __webpack_require__("../../../../node-libs-browser/mock/empty.js");
-    var path = __webpack_require__("../../../../path-browserify/index.js");
-    if (DEBUG) {
-        return Promise.resolve('example_channel');
-    }
-    else {
-        var WORD_FILE_NAME_1 = 'google-10000-english-usa-no-swears-medium.txt';
-        //Open up the list of words
-        return new Promise(function (resolve, reject) {
-            fs.readFile(path.join(__dirname, WORD_FILE_NAME_1), { encoding: 'utf-8' }, function (err, result) {
-                if (err) {
-                    reject(err);
-                }
-                else {
-                    resolve(result);
-                }
-            });
-        }).then(function (words) {
-            // Put the list of opened words in a random order
-            return __WEBPACK_IMPORTED_MODULE_0_underscore__["shuffle"](words.split(/\n/));
-        }).then(function (wordList) {
-            function getNextWord() {
-                var i, j;
-                return __generator(this, function (_a) {
-                    switch (_a.label) {
-                        case 0:
-                            i = 0;
-                            _a.label = 1;
-                        case 1:
-                            if (!(i < wordList.length)) return [3 /*break*/, 4];
-                            return [4 /*yield*/, wordList[i]];
-                        case 2:
-                            _a.sent();
-                            _a.label = 3;
-                        case 3:
-                            i++;
-                            return [3 /*break*/, 1];
-                        case 4:
-                            j = 0;
-                            _a.label = 5;
-                        case 5:
-                            if (false) return [3 /*break*/, 7];
-                            return [4 /*yield*/, wordList[j % wordList.length] + j + ''];
-                        case 6:
-                            _a.sent();
-                            j++;
-                            return [3 /*break*/, 5];
-                        case 7: return [2 /*return*/];
-                    }
-                });
-            }
-            function getNextAvailableName(iterator) {
-                var value = iterator.next().value;
-                return commLayer.channelNameAvailable(value).then(function (available) {
-                    if (available) {
-                        return value;
-                    }
-                    else {
-                        return getNextAvailableName(iterator);
-                    }
-                });
-            }
-            return getNextAvailableName(getNextWord());
-        });
-    }
-}
 var ChannelCommunicationService = (function (_super) {
     __extends(ChannelCommunicationService, _super);
     /**
@@ -11128,13 +11035,15 @@ var ChannelCommunicationService = (function (_super) {
      * @param  {string}               channelName The name of the channel we're communicating on
      * @param  {class}               EditorWrapperClass A class whose instances satisfy the EditorWrapper interface
      */
-    function ChannelCommunicationService(commService, channelName, EditorWrapperClass) {
+    function ChannelCommunicationService(commService, channelName, channelID, EditorWrapperClass) {
         var _this = _super.call(this) || this;
         _this.commService = commService;
         _this.channelName = channelName;
+        _this.channelID = channelID;
         _this._isRoot = false;
         _this.cachedEditorVersions = new Map();
         _this.commLayer = commService.commLayer;
+        _this.channelCommLayer = _this.commLayer.getNamespace(_this.getChannelName(), _this.channelID);
         _this.chatDoc = _this.createDocSubscription('chat');
         _this.editorsDoc = _this.createDocSubscription('editors');
         _this.cursorsDoc = _this.createDocSubscription('cursors');
@@ -11150,7 +11059,9 @@ var ChannelCommunicationService = (function (_super) {
     ChannelCommunicationService.prototype.getMessageGroups = function () { return this.messageGroups; };
     ;
     ChannelCommunicationService.prototype.createDocSubscription = function (docName) {
-        return this.commLayer.getShareDBObject(this.getChannelName(), docName).then(function (doc) {
+        return this.channelCommLayer.then(function (ccomm) {
+            return ccomm.getShareDBObject(docName);
+        }).then(function (doc) {
             return new Promise(function (resolve, reject) {
                 doc.subscribe(function (err) {
                     if (err) {
@@ -11164,21 +11075,21 @@ var ChannelCommunicationService = (function (_super) {
         });
     };
     ChannelCommunicationService.prototype.getMyID = function () {
-        return this.commLayer.getMyID(this.getChannelName());
+        return this.channelCommLayer.then(function (ccomm) {
+            return ccomm.getID();
+        });
     };
     ChannelCommunicationService.prototype.getShareDBChat = function () { return this.chatDoc; };
     ChannelCommunicationService.prototype.getShareDBEditors = function () { return this.editorsDoc; };
     ChannelCommunicationService.prototype.getShareDBCursors = function () { return this.cursorsDoc; };
-    ChannelCommunicationService.prototype.isRoot = function () {
-        return this._isRoot;
-        // return this.commService.isRoot;
-    };
     ChannelCommunicationService.prototype.getEditorVersion = function (version) {
         if (this.cachedEditorVersions.has(version)) {
             return this.cachedEditorVersions.get(version);
         }
         else {
-            var prv = this.commLayer.ptrigger(this.getChannelName(), 'get-editors-values', version).then(function (data) {
+            var prv = this.channelCommLayer.then(function (ccomm) {
+                return ccomm.pemit('get-editors-values', version);
+            }).then(function (data) {
                 var rv = new Map();
                 __WEBPACK_IMPORTED_MODULE_0_underscore__["each"](data, function (x) {
                     rv.set(x.id, x);
@@ -11194,7 +11105,7 @@ var ChannelCommunicationService = (function (_super) {
      * @return {Promise<any>} [description]
      */
     ChannelCommunicationService.prototype.ready = function () {
-        return this.commLayer.channelReady(this.channelName);
+        return Promise.all([this.channelCommLayer, this.editorStateTracker.ready, this.userList.ready, this.messageGroups.ready]);
     };
     /**
      * Request that the user saves a particular file
@@ -11248,17 +11159,6 @@ var ChannelCommunicationService = (function (_super) {
             var oldValue = doc.data['activeUsers'][myID]['info']['typingStatus'];
             doc.submitOp([{ p: ['activeUsers', myID, 'info', 'typingStatus'], od: oldValue, oi: status }]);
         });
-        // const meUser = this.userList.getMe();
-        //
-        // this.commLayer.trigger(this.channelName, 'typing', data);
-        //
-        // (this as any).emit('typing', _.extend({
-        //     sender: this.userList.getMe()
-        // }, data));
-        //
-        // if(meUser) {
-        //     meUser.setTypingStatus(status);
-        // }
     };
     /**
      * The user modified something in the editor
@@ -11268,15 +11168,14 @@ var ChannelCommunicationService = (function (_super) {
     ChannelCommunicationService.prototype.emitEditorChanged = function (serializedDelta, remote) {
         var _this = this;
         if (remote === void 0) { remote = true; }
-        this.getMyID().then(function (myID) {
+        this.channelCommLayer.then(function (ccomm) {
+            var myID = ccomm.getID();
             __WEBPACK_IMPORTED_MODULE_0_underscore__["extend"](serializedDelta, {
                 timestamp: _this.getTimestamp(),
                 uid: myID,
                 remote: remote
             });
-            // const delta:UndoableDelta = this.editorStateTracker.handleEvent(serializedDelta, serializedDelta.type !== 'edit');
-            // this.messageGroups.addDelta(delta);
-            _this.commLayer.trigger(_this.channelName, 'editor-event', serializedDelta);
+            return ccomm.pemit('editor-event', serializedDelta);
         });
     };
     /**
@@ -11349,20 +11248,26 @@ var ChannelCommunicationService = (function (_super) {
      * @param {[type]} remote=false Whether this was outputted by a remote client
      */
     ChannelCommunicationService.prototype.emitTerminalData = function (data, remote) {
+        var _this = this;
         if (remote === void 0) { remote = false; }
-        this.commLayer.trigger(this.channelName, 'terminal-data', {
-            timestamp: this.getTimestamp(),
-            data: data,
-            remote: remote
+        this.channelCommLayer.then(function (ccomm) {
+            return ccomm.pemit('terminal-data', {
+                timestamp: _this.getTimestamp(),
+                data: data,
+                remote: remote
+            });
         });
     };
     ;
     ChannelCommunicationService.prototype.writeToTerminal = function (data) {
-        this.commLayer.trigger(this.channelName, 'write-to-terminal', {
-            timestamp: this.getTimestamp(),
-            uid: this.myID,
-            remote: true,
-            contents: data
+        var _this = this;
+        this.channelCommLayer.then(function (ccomm) {
+            return ccomm.pemit('write-to-terminal', {
+                timestamp: _this.getTimestamp(),
+                uid: _this.myID,
+                remote: true,
+                contents: data
+            });
         });
     };
     ChannelCommunicationService.prototype.getURL = function () {
@@ -11374,7 +11279,9 @@ var ChannelCommunicationService = (function (_super) {
         });
     };
     ChannelCommunicationService.prototype.destroy = function () {
-        this.commLayer.destroy();
+        this.channelCommLayer.then(function (ccomm) {
+            ccomm.destroy();
+        });
     };
     ChannelCommunicationService.prototype.getActiveEditors = function () {
         return this.editorStateTracker.getActiveEditors();
@@ -11406,22 +11313,12 @@ var CommunicationService = (function () {
         // }
     }
     /**
-     * Create a channel with a randomly generated name
-     * @return {Promise<ChannelCommunicationService>} A promise that resolves to the channel
-     */
-    CommunicationService.prototype.createChannel = function () {
-        var _this = this;
-        return generateChannelName(this.commLayer).then(function (channelName) {
-            return _this.createChannelWithName(channelName);
-        });
-    };
-    /**
      * Create a new channel and supply the name
      * @param  {string}                      channelName The name of the channel
      * @return {ChannelCommunicationService}             The communication channel
      */
-    CommunicationService.prototype.createChannelWithName = function (channelName) {
-        var channel = new ChannelCommunicationService(this, channelName, this.EditorWrapperClass);
+    CommunicationService.prototype.createChannelWithName = function (channelName, channelID) {
+        var channel = new ChannelCommunicationService(this, channelName, channelID, this.EditorWrapperClass);
         this.clients[channelName] = channel;
         return channel;
     };
@@ -11450,7 +11347,6 @@ var CommunicationService = (function () {
 }());
 
 //# sourceMappingURL=communication-service.js.map
-/* WEBPACK VAR INJECTION */}.call(__webpack_exports__, "/"))
 
 /***/ }),
 
@@ -11578,6 +11474,7 @@ var RemoteCursorMarker = (function (_super) {
 
 var EditorState = (function () {
     function EditorState(suppliedState, editorWrapper, userList, mustPerformChange) {
+        var _this = this;
         this.editorWrapper = editorWrapper;
         this.userList = userList;
         this.selections = {};
@@ -11592,7 +11489,9 @@ var EditorState = (function () {
         this.isOpen = state.isOpen;
         this.title = state.title;
         this.editorWrapper.setEditorState(this);
-        this.editorWrapper.setGrammar(state.grammarName);
+        setTimeout(function () {
+            _this.editorWrapper.setGrammar(state.grammarName);
+        }, 100);
         this.editorID = state.id;
         state.cursors.forEach(function (c) { });
     }
@@ -11661,7 +11560,7 @@ var EditorStateTracker = (function (_super) {
         _this.editorStates = new Map();
         _this.currentVersion = CURRENT;
         _this.currentTimestamp = CURRENT;
-        _this.channelCommunicationService.getShareDBEditors().then(function (editorDoc) {
+        var editorsDocPromise = _this.channelCommunicationService.getShareDBEditors().then(function (editorDoc) {
             editorDoc.data.forEach(function (li) {
                 _this.onEditorOpened(li, true);
             });
@@ -11677,7 +11576,7 @@ var EditorStateTracker = (function (_super) {
                 });
             });
         });
-        _this.channelCommunicationService.getShareDBCursors().then(function (cursorsDoc) {
+        var cursorsDocPromise = _this.channelCommunicationService.getShareDBCursors().then(function (cursorsDoc) {
             __WEBPACK_IMPORTED_MODULE_0_underscore__["each"](cursorsDoc.data, function (cursorInfo, editorID) {
                 var editor = _this.getEditorState(editorID);
                 if (editor) {
@@ -11762,6 +11661,9 @@ var EditorStateTracker = (function (_super) {
             // 		}
             // 	}
             // }
+        });
+        _this.ready = Promise.all([editorsDocPromise, cursorsDocPromise]).then(function () {
+            return true;
         });
         return _this;
     }
@@ -11913,14 +11815,17 @@ var EditorStateTracker = (function (_super) {
 "use strict";
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_sharedb_lib_client__ = __webpack_require__("../../../../../../chat-codes-services/node_modules/sharedb/lib/client/index.js");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_sharedb_lib_client___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0_sharedb_lib_client__);
+/* unused harmony export NamespaceCommunicator */
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return WebSocketCommunicationLayer; });
 
 var NamespaceCommunicator = (function () {
-    function NamespaceCommunicator(channelName, username, ws) {
+    function NamespaceCommunicator(channelName, channelID, username, ws, sdbp) {
         var _this = this;
         this.channelName = channelName;
+        this.channelID = channelID;
         this.username = username;
         this.ws = ws;
+        this.sdbp = sdbp;
         this.responseCallbacks = new Map();
         this.typeCallbacks = new Map();
         this.id = "/" + this.getChannelName() + "#" + guid();
@@ -11962,6 +11867,7 @@ var NamespaceCommunicator = (function () {
             if (_this.getChannelName()) {
                 return _this.pemit('request-join-room', {
                     channel: _this.getChannelName(),
+                    channelID: _this.channelID,
                     username: _this.username,
                     id: _this.getID()
                 });
@@ -12012,7 +11918,7 @@ var NamespaceCommunicator = (function () {
         });
     };
     ;
-    NamespaceCommunicator.prototype.on = function (type, callback) {
+    NamespaceCommunicator.prototype.bind = function (type, callback) {
         if (this.typeCallbacks.has(type)) {
             this.typeCallbacks.get(type).push(callback);
         }
@@ -12020,7 +11926,7 @@ var NamespaceCommunicator = (function () {
             this.typeCallbacks.set(type, [callback]);
         }
     };
-    NamespaceCommunicator.prototype.off = function (type, callback) {
+    NamespaceCommunicator.prototype.unbind = function (type, callback) {
         if (this.typeCallbacks.has(type)) {
             var callbacks = this.typeCallbacks.get(type);
             for (var i = 0; i < callbacks.length; i++) {
@@ -12045,11 +11951,28 @@ var NamespaceCommunicator = (function () {
     ;
     NamespaceCommunicator.prototype.getShareDBNamespace = function () { return this.shareDBNamespace; };
     ;
+    NamespaceCommunicator.prototype.getShareDBObject = function (path) {
+        var _this = this;
+        return this.sdbp.then(function (connection) {
+            return connection.get(_this.getShareDBNamespace(), path);
+        });
+    };
+    ;
     NamespaceCommunicator.prototype.destroy = function () {
+    };
+    ;
+    NamespaceCommunicator.prototype.trigger = function (channelName, eventName, eventContents, callback) {
+        if (callback) {
+            this.emit(eventName, eventContents, callback);
+        }
+        else {
+            this.emit(eventName, eventContents);
+        }
     };
     ;
     return NamespaceCommunicator;
 }());
+
 var WebSocketCommunicationLayer = (function () {
     function WebSocketCommunicationLayer(authInfo) {
         var _this = this;
@@ -12067,7 +11990,7 @@ var WebSocketCommunicationLayer = (function () {
             });
         });
         this.mainSocket = this.wsPromise.then(function (ws) {
-            return new NamespaceCommunicator(null, _this.username, ws).ready();
+            return new NamespaceCommunicator(null, null, _this.username, ws, _this.shareDBConnectionPromise).ready();
         });
         this.shareDBConnectionPromise = this.wsPromise.then(function (ws) {
             var connection = new __WEBPACK_IMPORTED_MODULE_0_sharedb_lib_client__["Connection"](ws);
@@ -12082,56 +12005,19 @@ var WebSocketCommunicationLayer = (function () {
     WebSocketCommunicationLayer.prototype.getShareDBConnection = function () {
         return this.shareDBConnectionPromise;
     };
-    WebSocketCommunicationLayer.prototype.getNamespace = function (name) {
+    WebSocketCommunicationLayer.prototype.getNamespace = function (channelName, channelID) {
         var _this = this;
-        if (this.namespaces.has(name)) {
-            return this.namespaces.get(name);
+        if (this.namespaces.has(channelName)) {
+            return this.namespaces.get(channelName);
         }
         else {
             var namespacePromise = this.wsPromise.then(function (ws) {
-                return new NamespaceCommunicator(name, _this.username, ws).ready();
+                return new NamespaceCommunicator(channelName, channelID, _this.username, ws, _this.shareDBConnectionPromise).ready();
             });
-            this.namespaces.set(name, namespacePromise);
+            this.namespaces.set(channelName, namespacePromise);
             return namespacePromise;
         }
     };
-    WebSocketCommunicationLayer.prototype.getMyID = function (channelName) {
-        return this.getNamespace(channelName).then(function (ns) {
-            return ns.getID();
-        });
-    };
-    WebSocketCommunicationLayer.prototype.trigger = function (channelName, eventName, eventContents, callback) {
-        this.getNamespace(channelName).then(function (room) {
-            if (callback) {
-                room.emit(eventName, eventContents, callback);
-            }
-            else {
-                room.emit(eventName, eventContents);
-            }
-        });
-    };
-    ;
-    WebSocketCommunicationLayer.prototype.ptrigger = function (channelName, eventName, eventContents) {
-        return this.getNamespace(channelName).then(function (room) {
-            return room.pemit(eventName, eventContents);
-        });
-    };
-    WebSocketCommunicationLayer.prototype.getShareDBObject = function (channelName, path) {
-        return Promise.all([this.getNamespace(channelName), this.shareDBConnectionPromise]).then(function (info) {
-            var room = info[0];
-            var connection = info[1];
-            var shareDBNamespace = room.getShareDBNamespace();
-            var doc = connection.get(shareDBNamespace, path);
-            return doc;
-        });
-    };
-    ;
-    WebSocketCommunicationLayer.prototype.bind = function (channelName, eventName, callback) {
-        this.getNamespace(channelName).then(function (ns) {
-            ns.on(eventName, callback);
-        });
-    };
-    ;
     WebSocketCommunicationLayer.prototype.getMembers = function (channelName) {
         return this.getNamespace(channelName).then(function (room) {
             return new Promise(function (resolve, reject) {
@@ -12150,26 +12036,6 @@ var WebSocketCommunicationLayer = (function () {
                 });
             });
         });
-    };
-    ;
-    WebSocketCommunicationLayer.prototype.onMemberAdded = function (channelName, callback) {
-        this.getNamespace(channelName).then(function (room) {
-            room.on('member-added', function (member) {
-                callback(member);
-            });
-        });
-    };
-    ;
-    WebSocketCommunicationLayer.prototype.onMemberRemoved = function (channelName, callback) {
-        this.getNamespace(channelName).then(function (room) {
-            room.on('member-removed', function (member) {
-                callback(member);
-            });
-        });
-    };
-    ;
-    WebSocketCommunicationLayer.prototype.channelReady = function (channelName) {
-        return this.getNamespace(channelName);
     };
     ;
     WebSocketCommunicationLayer.prototype.destroy = function () {
@@ -12259,10 +12125,12 @@ var AppComponent = (function () {
         this.name = '';
         this.hasName = false;
         this.connected = false;
-        this.channelName = 'example_channel';
-        var channelName = __WEBPACK_IMPORTED_MODULE_2__angular_common__["d" /* Location */].stripTrailingSlash(location.pathname.substring(1));
-        if (channelName) {
-            this.channelName = channelName;
+        var paths = location.pathname.substring(1).split('/');
+        if (paths.length > 0) {
+            this.channelName = __WEBPACK_IMPORTED_MODULE_2__angular_common__["d" /* Location */].stripTrailingSlash(paths[0]);
+        }
+        if (paths.length > 1) {
+            this.channelID = __WEBPACK_IMPORTED_MODULE_2__angular_common__["d" /* Location */].stripTrailingSlash(paths[1]);
         }
         // this.setName('remote');
     }
@@ -12277,11 +12145,10 @@ var AppComponent = (function () {
         this.hasName = true;
         this.commLayer = new __WEBPACK_IMPORTED_MODULE_1_chat_codes_services_src_communication_service__["b" /* CommunicationService */]({
             username: this.name,
-            host: window.location.host
-            // host: 'localhost',
-            // port: 8000
+            // host: window.location.host
+            host: 'localhost:8080',
         }, __WEBPACK_IMPORTED_MODULE_3__editor_ace_editor_wrapper__["a" /* AceEditorWrapper */]);
-        this.channelCommLayer = this.commLayer.createChannelWithName(this.channelName);
+        this.channelCommLayer = this.commLayer.createChannelWithName(this.channelName, this.channelID);
         this.editorStateTracker = this.channelCommLayer.getEditorStateTracker();
         this.channelCommLayer.ready().then(function (channel) {
             _this.connected = true;
