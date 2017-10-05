@@ -44,7 +44,7 @@ class ChatCodesServer {
                 return this.createNamespace(channelName, null, topic || null);
             }).then((ns) => {
                 if (code) {
-                    return ns.addCodeFile(code || '', '(code)', 'Python');
+                    return ns.addCodeFile(code || '', 'code', 'Python');
                 }
                 else {
                     return false;
