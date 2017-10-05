@@ -12145,8 +12145,8 @@ var AppComponent = (function () {
         this.hasName = true;
         this.commLayer = new __WEBPACK_IMPORTED_MODULE_1_chat_codes_services_src_communication_service__["b" /* CommunicationService */]({
             username: this.name,
-            // host: window.location.host
-            host: 'localhost:8080',
+            host: window.location.host
+            // host: 'localhost:8080',
         }, __WEBPACK_IMPORTED_MODULE_3__editor_ace_editor_wrapper__["a" /* AceEditorWrapper */]);
         this.channelCommLayer = this.commLayer.createChannelWithName(this.channelName, this.channelID);
         this.editorStateTracker = this.channelCommLayer.getEditorStateTracker();
