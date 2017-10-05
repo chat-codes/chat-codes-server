@@ -1,4 +1,4 @@
-webpackJsonp(["main"],{
+webpackJsonp([1],{
 
 /***/ "../../../../../../chat-codes-services/node_modules/difflib/index.js":
 /***/ (function(module, exports, __webpack_require__) {
@@ -5690,7 +5690,7 @@ exports.hasKeys = function(object) {
 /***/ "../../../../../../chat-codes-services/node_modules/showdown/dist/showdown.js":
 /***/ (function(module, exports, __webpack_require__) {
 
-var __WEBPACK_AMD_DEFINE_RESULT__;;/*! showdown v 1.7.4 - 08-09-2017 */
+var __WEBPACK_AMD_DEFINE_RESULT__;;/*! showdown v 1.7.3 - 23-08-2017 */
 (function(){
 /**
  * Created by Tivie on 13-07-2015.
@@ -6278,7 +6278,7 @@ showdown.helper.isFunction = function (a) {
  */
 showdown.helper.isArray = function (a) {
   'use strict';
-  return Array.isArray(a);
+  return a.constructor === Array;
 };
 
 /**
@@ -7938,14 +7938,8 @@ showdown.subParser('images', function (text, options, globals) {
 
   var inlineRegExp      = /!\[([^\]]*?)][ \t]*()\([ \t]?<?([\S]+?(?:\([\S]*?\)[\S]*?)?)>?(?: =([*\d]+[A-Za-z%]{0,4})x([*\d]+[A-Za-z%]{0,4}))?[ \t]*(?:(["'])([^"]*?)\6)?[ \t]?\)/g,
       crazyRegExp       = /!\[([^\]]*?)][ \t]*()\([ \t]?<([^>]*)>(?: =([*\d]+[A-Za-z%]{0,4})x([*\d]+[A-Za-z%]{0,4}))?[ \t]*(?:(?:(["'])([^"]*?)\6))?[ \t]?\)/g,
-      base64RegExp      = /!\[([^\]]*?)][ \t]*()\([ \t]?<?(data:.+?\/.+?;base64,[A-Za-z0-9+/=\n]+?)>?(?: =([*\d]+[A-Za-z%]{0,4})x([*\d]+[A-Za-z%]{0,4}))?[ \t]*(?:(["'])([^"]*?)\6)?[ \t]?\)/g,
-      referenceRegExp   = /!\[([^\]]*?)] ?(?:\n *)?\[([\s\S]*?)]()()()()()/g,
+      referenceRegExp   = /!\[([^\]]*?)] ?(?:\n *)?\[(.*?)]()()()()()/g,
       refShortcutRegExp = /!\[([^\[\]]+)]()()()()()/g;
-
-  function writeImageTagBase64 (wholeMatch, altText, linkId, url, width, height, m5, title) {
-    url = url.replace(/\s/g, '');
-    return writeImageTag (wholeMatch, altText, linkId, url, width, height, m5, title);
-  }
 
   function writeImageTag (wholeMatch, altText, linkId, url, width, height, m5, title) {
 
@@ -8016,17 +8010,13 @@ showdown.subParser('images', function (text, options, globals) {
   text = text.replace(referenceRegExp, writeImageTag);
 
   // Next, handle inline images:  ![alt text](url =<width>x<height> "optional title")
-
-  // base64 encoded images
-  text = text.replace(base64RegExp, writeImageTagBase64);
-
   // cases with crazy urls like ./image/cat1).png
   text = text.replace(crazyRegExp, writeImageTag);
 
   // normal cases
   text = text.replace(inlineRegExp, writeImageTag);
 
-  // handle reference-style shortcuts: ![img text]
+  // handle reference-style shortcuts: |[img text]
   text = text.replace(refShortcutRegExp, writeImageTag);
 
   text = globals.converter._dispatch('images.after', text, options, globals);
@@ -8476,20 +8466,14 @@ showdown.subParser('strikethrough', function (text, options, globals) {
 showdown.subParser('stripLinkDefinitions', function (text, options, globals) {
   'use strict';
 
-  var regex       = /^ {0,3}\[(.+)]:[ \t]*\n?[ \t]*<?([^>\s]+)>?(?: =([*\d]+[A-Za-z%]{0,4})x([*\d]+[A-Za-z%]{0,4}))?[ \t]*\n?[ \t]*(?:(\n*)["|'(](.+?)["|')][ \t]*)?(?:\n+|(?=¨0))/gm,
-      base64Regex = /^ {0,3}\[(.+)]:[ \t]*\n?[ \t]*<?(data:.+?\/.+?;base64,[A-Za-z0-9+/=\n]+?)>?(?: =([*\d]+[A-Za-z%]{0,4})x([*\d]+[A-Za-z%]{0,4}))?[ \t]*\n?[ \t]*(?:(\n*)["|'(](.+?)["|')][ \t]*)?(?:\n\n|(?=¨0)|(?=\n\[))/gm;
+  var regex = /^ {0,3}\[(.+)]:[ \t]*\n?[ \t]*<?([^>\s]+)>?(?: =([*\d]+[A-Za-z%]{0,4})x([*\d]+[A-Za-z%]{0,4}))?[ \t]*\n?[ \t]*(?:(\n*)["|'(](.+?)["|')][ \t]*)?(?:\n+|(?=¨0))/gm;
 
   // attacklab: sentinel workarounds for lack of \A and \Z, safari\khtml bug
   text += '¨0';
 
-  var replaceFunc = function (wholeMatch, linkId, url, width, height, blankLines, title) {
+  text = text.replace(regex, function (wholeMatch, linkId, url, width, height, blankLines, title) {
     linkId = linkId.toLowerCase();
-    if (url.match(/^data:.+?\/.+?;base64,/)) {
-      // remove newlines
-      globals.gUrls[linkId] = url.replace(/\s/g, '');
-    } else {
-      globals.gUrls[linkId] = showdown.subParser('encodeAmpsAndAngles')(url, options, globals);  // Link IDs are case-insensitive
-    }
+    globals.gUrls[linkId] = showdown.subParser('encodeAmpsAndAngles')(url, options, globals);  // Link IDs are case-insensitive
 
     if (blankLines) {
       // Oops, found blank lines, so it's not a title.
@@ -8509,12 +8493,7 @@ showdown.subParser('stripLinkDefinitions', function (text, options, globals) {
     }
     // Completely remove the definition from the text
     return '';
-  };
-
-  // first we try to find base64 link references
-  text = text.replace(base64Regex, replaceFunc);
-
-  text = text.replace(regex, replaceFunc);
+  });
 
   // attacklab: strip sentinel
   text = text.replace(/¨0/, '');
@@ -8681,17 +8660,17 @@ showdown.subParser('unescapeSpecialChars', function (text, options, globals) {
 
 var root = this;
 
+// CommonJS/nodeJS Loader
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = showdown;
+
 // AMD Loader
-if (true) {
+} else if (true) {
   !(__WEBPACK_AMD_DEFINE_RESULT__ = function () {
     'use strict';
     return showdown;
   }.call(exports, __webpack_require__, exports, module),
 				__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
-
-// CommonJS/nodeJS Loader
-} else if (typeof module !== 'undefined' && module.exports) {
-  module.exports = showdown;
 
 // Regular Browser loader
 } else {
@@ -10263,13 +10242,6 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;//     Underscor
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* unused harmony export ConnectionMessage */
-/* unused harmony export EditMessage */
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "d", function() { return TextMessage; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "b", function() { return EditGroup; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "e", function() { return TextMessageGroup; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return ConnectionMessageGroup; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "c", function() { return MessageGroups; });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_underscore__ = __webpack_require__("../../../../../../chat-codes-services/node_modules/underscore/underscore.js");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_underscore___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0_underscore__);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_events__ = __webpack_require__("../../../../events/events.js");
@@ -10278,6 +10250,13 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;//     Underscor
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_2_showdown___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_2_showdown__);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_3_difflib__ = __webpack_require__("../../../../../../chat-codes-services/node_modules/difflib/index.js");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_3_difflib___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_3_difflib__);
+/* unused harmony export ConnectionMessage */
+/* unused harmony export EditMessage */
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "c", function() { return TextMessage; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "d", function() { return EditGroup; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "e", function() { return TextMessageGroup; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "b", function() { return ConnectionMessageGroup; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return MessageGroups; });
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
         ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -10817,12 +10796,12 @@ var MessageGroups = (function (_super) {
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return ChatUser; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "b", function() { return ChatUserList; });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_underscore__ = __webpack_require__("../../../../../../chat-codes-services/node_modules/underscore/underscore.js");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_underscore___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0_underscore__);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_events__ = __webpack_require__("../../../../events/events.js");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_events___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_1_events__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "b", function() { return ChatUser; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return ChatUserList; });
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
         ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -11013,9 +10992,7 @@ var ChatUserList = (function (_super) {
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* WEBPACK VAR INJECTION */(function(__dirname) {/* unused harmony export ChannelCommunicationService */
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return CommunicationService; });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_underscore__ = __webpack_require__("../../../../../../chat-codes-services/node_modules/underscore/underscore.js");
+/* WEBPACK VAR INJECTION */(function(__dirname) {/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_underscore__ = __webpack_require__("../../../../../../chat-codes-services/node_modules/underscore/underscore.js");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_underscore___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0_underscore__);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__chat_user__ = __webpack_require__("../../../../../../chat-codes-services/src/chat-user.ts");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__socket_communication_layer__ = __webpack_require__("../../../../../../chat-codes-services/src/socket-communication-layer.ts");
@@ -11023,6 +11000,8 @@ var ChatUserList = (function (_super) {
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_3_events___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_3_events__);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_4__chat_messages__ = __webpack_require__("../../../../../../chat-codes-services/src/chat-messages.ts");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_5__editor_state_tracker__ = __webpack_require__("../../../../../../chat-codes-services/src/editor-state-tracker.ts");
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return ChannelCommunicationService; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "b", function() { return CommunicationService; });
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
         ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -11159,69 +11138,17 @@ var ChannelCommunicationService = (function (_super) {
         _this.chatDoc = _this.createDocSubscription('chat');
         _this.editorsDoc = _this.createDocSubscription('editors');
         _this.cursorsDoc = _this.createDocSubscription('cursors');
-        _this.userList = new __WEBPACK_IMPORTED_MODULE_1__chat_user__["b" /* ChatUserList */](_this.getMyID(), _this);
+        _this.userList = new __WEBPACK_IMPORTED_MODULE_1__chat_user__["a" /* ChatUserList */](_this.getMyID(), _this);
         _this.editorStateTracker = new __WEBPACK_IMPORTED_MODULE_5__editor_state_tracker__["a" /* EditorStateTracker */](EditorWrapperClass, _this, _this.userList);
-        _this.messageGroups = new __WEBPACK_IMPORTED_MODULE_4__chat_messages__["c" /* MessageGroups */](_this, _this.userList, _this.editorStateTracker);
+        _this.messageGroups = new __WEBPACK_IMPORTED_MODULE_4__chat_messages__["a" /* MessageGroups */](_this, _this.userList, _this.editorStateTracker);
         return _this;
-        // Track when users are typing
-        // this.commLayer.bind(this.channelName, 'typing', (data) => {
-        //     const {uid, status} = data;
-        //     const user = this.userList.getUser(uid);
-        //
-        //     (this as any).emit('typing', _.extend({
-        //         sender: user
-        //     }, data));
-        //
-        //     if(user) {
-        //         user.setTypingStatus(status);
-        //     }
-        // });
-        // Track when something happens in the editor
-        // this.commLayer.bind(this.channelName, 'editor-event', (data) => {
-        // 	const delta:UndoableDelta = this.editorStateTracker.handleEvent(data, true);
-        //     this.messageGroups.addDelta(delta);
-        //     (this as any).emit('editor-event', data);
-        // });
-        // Track when the user moves the cursor
-        // this.commLayer.bind(this.channelName, 'cursor-event', (data) => {
-        // 	const {id, type, uid} = data;
-        // 	let user = this.userList.getUser(uid);
-        //     const cursorID = uid + id;
-        //
-        // 	if(type === 'change-position') { // The caret position changed
-        // 		const {newBufferPosition, oldBufferPosition, newRange, cursorID, editorID} = data;
-        // 		const editorState = this.editorStateTracker.getEditorState(editorID);
-        // 		if(editorState) {
-        // 			const remoteCursors = editorState.getRemoteCursors();
-        // 			remoteCursors.updateCursor(cursorID, user, {row: newBufferPosition[0], column: newBufferPosition[1]});
-        // 		}
-        // 	} else if(type === 'change-selection') { // The selection range changed
-        // 		const {newRange, id, editorID} = data;
-        // 		const editorState = this.editorStateTracker.getEditorState(editorID);
-        // 		if(editorState) {
-        // 			const remoteCursors = editorState.getRemoteCursors();
-        // 			remoteCursors.updateSelection(cursorID, user, newRange);
-        // 		}
-        // 	} else if(type === 'destroy') { // The cursor was destroyed
-        // 		const {newRange, id, editorID} = data;
-        // 		const editorState = this.editorStateTracker.getEditorState(editorID);
-        // 		if(editorState) {
-        // 			const remoteCursors = editorState.getRemoteCursors();
-        // 			remoteCursors.removeCursor(cursorID, user);
-        // 		}
-        // 	}
-        //     (this as any).emit('cursor-event', data);
-        // });
-        // A new editor was opened
-        // this.commLayer.bind(this.channelName, 'editor-opened', (data) => {
-        //     // const mustPerformChange = !this.isRoot();
-        // 	const editorState:EditorState = this.editorStateTracker.onEditorOpened(data, true);
-        //     _.each(editorState.getDeltas(), (delta:UndoableDelta) => {
-        //         this.messageGroups.addDelta(delta);
-        //     });
-        //     (this as any).emit('editor-opened', data);
-        // });
     }
+    ChannelCommunicationService.prototype.getUserList = function () { return this.userList; };
+    ;
+    ChannelCommunicationService.prototype.getEditorStateTracker = function () { return this.editorStateTracker; };
+    ;
+    ChannelCommunicationService.prototype.getMessageGroups = function () { return this.messageGroups; };
+    ;
     ChannelCommunicationService.prototype.createDocSubscription = function (docName) {
         return this.commLayer.getShareDBObject(this.getChannelName(), docName).then(function (doc) {
             return new Promise(function (resolve, reject) {
@@ -11531,9 +11458,6 @@ var CommunicationService = (function () {
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* unused harmony export RemoteCursorMarker */
-/* unused harmony export EditorState */
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return EditorStateTracker; });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_underscore__ = __webpack_require__("../../../../../../chat-codes-services/node_modules/underscore/underscore.js");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_underscore___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0_underscore__);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_fuzzyset_js__ = __webpack_require__("../../../../../../chat-codes-services/node_modules/fuzzyset.js/index.js");
@@ -11544,6 +11468,9 @@ var CommunicationService = (function () {
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_3_sharedb_lib_client___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_3_sharedb_lib_client__);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_4_ot_text__ = __webpack_require__("../../../../../../chat-codes-services/node_modules/ot-text/lib/index.js");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_4_ot_text___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_4_ot_text__);
+/* unused harmony export RemoteCursorMarker */
+/* unused harmony export EditorState */
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return EditorStateTracker; });
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
         ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -11984,9 +11911,9 @@ var EditorStateTracker = (function (_super) {
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return WebSocketCommunicationLayer; });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_sharedb_lib_client__ = __webpack_require__("../../../../../../chat-codes-services/node_modules/sharedb/lib/client/index.js");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_sharedb_lib_client___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0_sharedb_lib_client__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return WebSocketCommunicationLayer; });
 
 var NamespaceCommunicator = (function () {
     function NamespaceCommunicator(channelName, username, ws) {
@@ -12131,7 +12058,7 @@ var WebSocketCommunicationLayer = (function () {
         this.disconnectListeners = [];
         this.username = authInfo.username;
         this.wsPromise = new Promise(function (resolve, reject) {
-            var ws = new WebSocket("ws://" + authInfo.host + ":" + authInfo.port);
+            var ws = new WebSocket("ws://" + authInfo.host);
             ws.addEventListener('open', function (event) {
                 resolve(ws);
             });
@@ -12266,20 +12193,16 @@ function guid() {
 
 /***/ }),
 
-/***/ "../../../../../src/$$_gendir lazy recursive":
+/***/ "../../../../../src async recursive":
 /***/ (function(module, exports) {
 
-function webpackEmptyAsyncContext(req) {
-	// Here Promise.resolve().then() is used instead of new Promise() to prevent
-	// uncatched exception popping up in devtools
-	return Promise.resolve().then(function() {
-		throw new Error("Cannot find module '" + req + "'.");
-	});
+function webpackEmptyContext(req) {
+	throw new Error("Cannot find module '" + req + "'.");
 }
-webpackEmptyAsyncContext.keys = function() { return []; };
-webpackEmptyAsyncContext.resolve = webpackEmptyAsyncContext;
-module.exports = webpackEmptyAsyncContext;
-webpackEmptyAsyncContext.id = "../../../../../src/$$_gendir lazy recursive";
+webpackEmptyContext.keys = function() { return []; };
+webpackEmptyContext.resolve = webpackEmptyContext;
+module.exports = webpackEmptyContext;
+webpackEmptyContext.id = "../../../../../src async recursive";
 
 /***/ }),
 
@@ -12304,7 +12227,7 @@ module.exports = module.exports.toString();
 /***/ "../../../../../src/app/app.component.html":
 /***/ (function(module, exports) {
 
-module.exports = "<name-entry *ngIf=\"!hasName\" (onEnter)=\"setName($event)\"></name-entry>\n\n<div class=\"container\" *ngIf=\"hasName && !connected\">\n    <div class=\"row\">\n        <div class=\"col\">Connecting...</div>\n    </div>\n</div>\n<div class=\"container-fluid\" *ngIf=\"hasName && connected\">\n    <!-- <nav class=\"navbar\">\n        <span class=\"navbar-brand\">\n            <img src=\"assets/images/cc_icon.svg\" class=\"logo\" />\n            <input type=\"text\" [value]=\"getChatURL()\" readonly />\n        </span>\n    </nav> -->\n    <div class=\"row\" id=\"list_row\">\n        <div class=\"col-8\">\n            <ul class='files nav nav-tabs'>\n                <li class='nav-item' *ngFor=\"let editorState of getActiveEditors()\">\n                    <a [ngClass]=\"{'active': editorState.selected}\" class='nav-link' href='javascript:void(0);' (click)=\"codeEditor.selectFile(editorState)\">\n                        {{editorState.getTitle()}}\n                        <span class='modifiedFlag' [ngClass]=\"{'modified':editorState.getIsModified()}\"></span>\n                    </a>\n                </li>\n                <li class='nav-item'>\n                    <a class='nav-link' href='javascript:void(0);' (click)=\"createNewFile()\">\n                        +\n                    </a>\n                </li>\n            </ul>\n        </div>\n        <!-- <div class=\"col-1\"></div> -->\n        <div class=\"col-4\">\n            Here now:\n            <ul class='members'>\n                <li class='member' *ngFor=\"let user of commLayer.userList.getActiveUsers()\">\n                    <user-display [user]='user'></user-display>\n                </li>\n            </ul>\n        </div>\n    </div>\n    <div class=\"row\" id=\"content_row\">\n        <div class=\"col-8\">\n            <code-editor [commLayer]='commLayer' (cursorSelectionChanged)='editorCursorSelectionChanged($event)' #codeEditor></code-editor>\n        </div>\n        <!-- <div class=\"col-1\">\n            <timeline-display></timeline-display>\n        </div> -->\n        <div class=\"col-4\">\n            <chat-messages [editorStateTracker]='editorStateTracker' [commLayer]='commLayer' [editor]='codeEditor'></chat-messages>\n        </div>\n    </div>\n    <div class=\"row\" id=\"input_row\">\n        <div class=\"col-8\">\n            <!-- <terminal [commLayer]='commLayer'></terminal> -->\n            <python-output [commLayer]='commLayer' [editor]='codeEditor'></python-output>\n        </div>\n        <!-- <div class=\"col-1\"></div> -->\n        <div class=\"col-4\">\n            <chat-input (send)='sendTextMessage($event)'\n            (typing)='updateTypingStatus($event)' #chatinput></chat-input>\n        </div>\n    </div>\n</div>\n"
+module.exports = "<name-entry *ngIf=\"!hasName\" (onEnter)=\"setName($event)\"></name-entry>\n\n<div class=\"container\" *ngIf=\"hasName && !connected\">\n    <div class=\"row\">\n        <div class=\"col\">Connecting...</div>\n    </div>\n</div>\n<div class=\"container-fluid\" *ngIf=\"hasName && connected\">\n    <!-- <nav class=\"navbar\">\n        <span class=\"navbar-brand\">\n            <img src=\"assets/images/cc_icon.svg\" class=\"logo\" />\n            <input type=\"text\" [value]=\"getChatURL()\" readonly />\n        </span>\n    </nav> -->\n    <div class=\"row\" id=\"list_row\">\n        <div class=\"col-8\">\n            <ul class='files nav nav-tabs'>\n                <li class='nav-item' *ngFor=\"let editorState of getActiveEditors()\">\n                    <a [ngClass]=\"{'active': editorState.selected}\" class='nav-link' href='javascript:void(0);' (click)=\"codeEditor.selectFile(editorState)\">\n                        {{editorState.getTitle()}}\n                        <span class='modifiedFlag' [ngClass]=\"{'modified':editorState.getIsModified()}\"></span>\n                    </a>\n                </li>\n                <li class='nav-item'>\n                    <a class='nav-link' href='javascript:void(0);' (click)=\"createNewFile()\">\n                        +\n                    </a>\n                </li>\n            </ul>\n        </div>\n        <!-- <div class=\"col-1\"></div> -->\n        <div class=\"col-4\">\n            Here now:\n            <ul class='members'>\n                <li class='member' *ngFor=\"let user of channelCommLayer.getUserList().getActiveUsers()\">\n                    <user-display [user]='user'></user-display>\n                </li>\n            </ul>\n        </div>\n    </div>\n    <div class=\"row\" id=\"content_row\">\n        <div class=\"col-8\">\n            <code-editor [commLayer]='channelCommLayer' (cursorSelectionChanged)='editorCursorSelectionChanged($event)' #codeEditor></code-editor>\n        </div>\n        <!-- <div class=\"col-1\">\n            <timeline-display></timeline-display>\n        </div> -->\n        <div class=\"col-4\">\n            <chat-messages [editorStateTracker]='editorStateTracker' [commLayer]='channelCommLayer' [editor]='codeEditor'></chat-messages>\n        </div>\n    </div>\n    <div class=\"row\" id=\"input_row\">\n        <div class=\"col-8\">\n            <!-- <terminal [commLayer]='channelCommLayer'></terminal> -->\n            <python-output [commLayer]='channelCommLayer' [editor]='codeEditor'></python-output>\n        </div>\n        <!-- <div class=\"col-1\"></div> -->\n        <div class=\"col-4\">\n            <chat-input (send)='sendTextMessage($event)'\n            (typing)='updateTypingStatus($event)' #chatinput></chat-input>\n        </div>\n    </div>\n</div>\n"
 
 /***/ }),
 
@@ -12312,10 +12235,11 @@ module.exports = "<name-entry *ngIf=\"!hasName\" (onEnter)=\"setName($event)\"><
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return AppComponent; });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__angular_core__ = __webpack_require__("../../../core/@angular/core.es5.js");
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__web_communication_service__ = __webpack_require__("../../../../../src/app/web-communication.service.ts");
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_chat_codes_services_src_communication_service__ = __webpack_require__("../../../../../../chat-codes-services/src/communication-service.ts");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__angular_common__ = __webpack_require__("../../../common/@angular/common.es5.js");
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__editor_ace_editor_wrapper__ = __webpack_require__("../../../../../src/app/editor/ace-editor-wrapper.ts");
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return AppComponent; });
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -12328,6 +12252,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 
 
 
+
 var AppComponent = (function () {
     function AppComponent() {
         this.at_bottom = false;
@@ -12335,7 +12260,7 @@ var AppComponent = (function () {
         this.hasName = false;
         this.connected = false;
         this.channelName = 'example_channel';
-        var channelName = __WEBPACK_IMPORTED_MODULE_2__angular_common__["b" /* Location */].stripTrailingSlash(location.pathname.substring(1));
+        var channelName = __WEBPACK_IMPORTED_MODULE_2__angular_common__["d" /* Location */].stripTrailingSlash(location.pathname.substring(1));
         if (channelName) {
             this.channelName = channelName;
         }
@@ -12350,9 +12275,15 @@ var AppComponent = (function () {
         var _this = this;
         this.name = name;
         this.hasName = true;
-        this.commLayer = new __WEBPACK_IMPORTED_MODULE_1__web_communication_service__["a" /* WebCommunicationService */](this.name, this.channelName);
-        this.editorStateTracker = this.commLayer.getEditorStateTracker();
-        this.commLayer.ready().then(function (channel) {
+        this.commLayer = new __WEBPACK_IMPORTED_MODULE_1_chat_codes_services_src_communication_service__["b" /* CommunicationService */]({
+            username: this.name,
+            host: window.location.host
+            // host: 'localhost',
+            // port: 8000
+        }, __WEBPACK_IMPORTED_MODULE_3__editor_ace_editor_wrapper__["a" /* AceEditorWrapper */]);
+        this.channelCommLayer = this.commLayer.createChannelWithName(this.channelName);
+        this.editorStateTracker = this.channelCommLayer.getEditorStateTracker();
+        this.channelCommLayer.ready().then(function (channel) {
             _this.connected = true;
         });
     };
@@ -12362,21 +12293,21 @@ var AppComponent = (function () {
     };
     ;
     AppComponent.prototype.sendTextMessage = function (message) {
-        this.commLayer.sendTextMessage(message);
+        this.channelCommLayer.sendTextMessage(message);
     };
     ;
     AppComponent.prototype.updateTypingStatus = function (status) {
-        this.commLayer.sendTypingStatus(status);
+        this.channelCommLayer.sendTypingStatus(status);
     };
     ;
     AppComponent.prototype.getActiveEditors = function () {
-        return this.commLayer.getActiveEditors();
+        return this.channelCommLayer.getActiveEditors();
     };
     ;
     AppComponent.prototype.createNewFile = function () {
         var _this = this;
-        return this.commLayer.ready().then(function () {
-            return _this.commLayer.channelService.getShareDBEditors();
+        return this.channelCommLayer.ready().then(function () {
+            return _this.channelCommLayer.getShareDBEditors();
         }).then(function (editorsDoc) {
             var id = guid();
             var title = 'file-' + (editorsDoc.data.length + 1);
@@ -12390,15 +12321,15 @@ var AppComponent = (function () {
     return AppComponent;
 }());
 __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["ViewChild"])('chatinput'),
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["ViewChild"])('chatinput'),
     __metadata("design:type", Object)
 ], AppComponent.prototype, "chatinput", void 0);
 __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["ViewChild"])('codeEditor'),
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["ViewChild"])('codeEditor'),
     __metadata("design:type", Object)
 ], AppComponent.prototype, "codeEditor", void 0);
 AppComponent = __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Component"])({
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Component"])({
         selector: 'app-root',
         template: __webpack_require__("../../../../../src/app/app.component.html"),
         styles: [__webpack_require__("../../../../../src/app/app.component.css"), __webpack_require__("../../../../bootstrap/dist/css/bootstrap.css"), __webpack_require__("../../../../xterm/dist/xterm.css")],
@@ -12424,7 +12355,6 @@ function guid() {
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return AppModule; });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__angular_platform_browser__ = __webpack_require__("../../../platform-browser/@angular/platform-browser.es5.js");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__angular_forms__ = __webpack_require__("../../../forms/@angular/forms.es5.js");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__angular_core__ = __webpack_require__("../../../core/@angular/core.es5.js");
@@ -12444,6 +12374,7 @@ function guid() {
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_15__python_out_python_out_component__ = __webpack_require__("../../../../../src/app/python_out/python_out.component.ts");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_16_angular2_moment__ = __webpack_require__("../../../../angular2-moment/index.js");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_16_angular2_moment___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_16_angular2_moment__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return AppModule; });
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -12473,7 +12404,7 @@ var AppModule = (function () {
     return AppModule;
 }());
 AppModule = __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_2__angular_core__["NgModule"])({
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_2__angular_core__["NgModule"])({
         declarations: [
             __WEBPACK_IMPORTED_MODULE_3__app_component__["a" /* AppComponent */],
             __WEBPACK_IMPORTED_MODULE_5__chat_input_chat_input_component__["a" /* ChatInput */],
@@ -12532,10 +12463,10 @@ module.exports = "<ace-editor [theme]=\"'chrome'\"\n\t\t\t\tid='chat-input-edito
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return ChatInput; });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__angular_core__ = __webpack_require__("../../../core/@angular/core.es5.js");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_underscore__ = __webpack_require__("../../../../underscore/underscore.js");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_underscore___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_1_underscore__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return ChatInput; });
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -12751,23 +12682,23 @@ var ChatInput = (function () {
     return ChatInput;
 }());
 __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["ViewChild"])('editor'),
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["ViewChild"])('editor'),
     __metadata("design:type", Object)
 ], ChatInput.prototype, "editor", void 0);
 __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Output"])(),
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Output"])(),
     __metadata("design:type", Object)
 ], ChatInput.prototype, "messageChanged", void 0);
 __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Output"])(),
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Output"])(),
     __metadata("design:type", typeof (_a = typeof __WEBPACK_IMPORTED_MODULE_0__angular_core__["EventEmitter"] !== "undefined" && __WEBPACK_IMPORTED_MODULE_0__angular_core__["EventEmitter"]) === "function" && _a || Object)
 ], ChatInput.prototype, "send", void 0);
 __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Output"])(),
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Output"])(),
     __metadata("design:type", typeof (_b = typeof __WEBPACK_IMPORTED_MODULE_0__angular_core__["EventEmitter"] !== "undefined" && __WEBPACK_IMPORTED_MODULE_0__angular_core__["EventEmitter"]) === "function" && _b || Object)
 ], ChatInput.prototype, "typing", void 0);
 ChatInput = __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Component"])({
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Component"])({
         selector: 'chat-input',
         template: __webpack_require__("../../../../../src/app/chat-input/chat-input.component.html"),
         styles: [__webpack_require__("../../../../../src/app/chat-input/chat-input.component.css")],
@@ -12808,12 +12739,12 @@ module.exports = "<div #messageDisplay class=\"message-display\">\n    <div clas
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return ChatMessagesDisplay; });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__angular_core__ = __webpack_require__("../../../core/@angular/core.es5.js");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_chat_codes_services_src_chat_messages__ = __webpack_require__("../../../../../../chat-codes-services/src/chat-messages.ts");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_2_chat_codes_services_src_editor_state_tracker__ = __webpack_require__("../../../../../../chat-codes-services/src/editor-state-tracker.ts");
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__web_communication_service__ = __webpack_require__("../../../../../src/app/web-communication.service.ts");
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3_chat_codes_services_src_communication_service__ = __webpack_require__("../../../../../../chat-codes-services/src/communication-service.ts");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_4__editor_editor_component__ = __webpack_require__("../../../../../src/app/editor/editor.component.ts");
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return ChatMessagesDisplay; });
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -12839,21 +12770,22 @@ var ChatMessagesDisplay = (function () {
         var _this = this;
         setTimeout(function () { _this.scrollToBottom(); }, 0);
         var at_bottom = false;
-        this.commLayer.messageGroups.on('group-will-be-added', function (event) {
+        var messageGroups = this.commLayer.getMessageGroups();
+        messageGroups.on('group-will-be-added', function (event) {
             at_bottom = _this.atBottom();
         });
-        this.commLayer.messageGroups.on('item-will-be-added', function (event) {
+        messageGroups.on('item-will-be-added', function (event) {
             at_bottom = _this.atBottom();
         });
         this.willChangeSize.subscribe(function () {
             at_bottom = _this.atBottom();
         });
-        this.commLayer.messageGroups.on('group-added', function (event) {
+        messageGroups.on('group-added', function (event) {
             setTimeout(function () { if (at_bottom) {
                 _this.scrollToBottom();
             } }, 0);
         });
-        this.commLayer.messageGroups.on('item-added', function (event) {
+        messageGroups.on('item-added', function (event) {
             setTimeout(function () { if (at_bottom) {
                 _this.scrollToBottom();
             } }, 0);
@@ -12888,11 +12820,11 @@ var ChatMessagesDisplay = (function () {
     };
     ;
     ChatMessagesDisplay.prototype.isEditMessage = function (message) {
-        return message instanceof __WEBPACK_IMPORTED_MODULE_1_chat_codes_services_src_chat_messages__["b" /* EditGroup */];
+        return message instanceof __WEBPACK_IMPORTED_MODULE_1_chat_codes_services_src_chat_messages__["d" /* EditGroup */];
     };
     ;
     ChatMessagesDisplay.prototype.isConnectMessage = function (message) {
-        return message instanceof __WEBPACK_IMPORTED_MODULE_1_chat_codes_services_src_chat_messages__["a" /* ConnectionMessageGroup */];
+        return message instanceof __WEBPACK_IMPORTED_MODULE_1_chat_codes_services_src_chat_messages__["b" /* ConnectionMessageGroup */];
     };
     ;
     ChatMessagesDisplay.prototype.updateCurrentTimestamp = function () {
@@ -12905,23 +12837,23 @@ var ChatMessagesDisplay = (function () {
     return ChatMessagesDisplay;
 }());
 __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Input"])(),
-    __metadata("design:type", typeof (_a = typeof __WEBPACK_IMPORTED_MODULE_3__web_communication_service__["a" /* WebCommunicationService */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_3__web_communication_service__["a" /* WebCommunicationService */]) === "function" && _a || Object)
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Input"])(),
+    __metadata("design:type", typeof (_a = typeof __WEBPACK_IMPORTED_MODULE_3_chat_codes_services_src_communication_service__["a" /* ChannelCommunicationService */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_3_chat_codes_services_src_communication_service__["a" /* ChannelCommunicationService */]) === "function" && _a || Object)
 ], ChatMessagesDisplay.prototype, "commLayer", void 0);
 __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Input"])(),
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Input"])(),
     __metadata("design:type", typeof (_b = typeof __WEBPACK_IMPORTED_MODULE_2_chat_codes_services_src_editor_state_tracker__["a" /* EditorStateTracker */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_2_chat_codes_services_src_editor_state_tracker__["a" /* EditorStateTracker */]) === "function" && _b || Object)
 ], ChatMessagesDisplay.prototype, "editorStateTracker", void 0);
 __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Input"])(),
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Input"])(),
     __metadata("design:type", typeof (_c = typeof __WEBPACK_IMPORTED_MODULE_4__editor_editor_component__["a" /* EditorDisplay */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_4__editor_editor_component__["a" /* EditorDisplay */]) === "function" && _c || Object)
 ], ChatMessagesDisplay.prototype, "editor", void 0);
 __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["ViewChild"])('messageDisplay'),
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["ViewChild"])('messageDisplay'),
     __metadata("design:type", Object)
 ], ChatMessagesDisplay.prototype, "messageDisplay", void 0);
 ChatMessagesDisplay = __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Component"])({
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Component"])({
         selector: 'chat-messages',
         template: __webpack_require__("../../../../../src/app/chat-messages/chat-messages.component.html"),
         styles: [__webpack_require__("../../../../../src/app/chat-messages/chat-messages.component.css")],
@@ -12963,9 +12895,9 @@ module.exports = "<div class=\"full_connection_message\">\n\t<div class=\"connec
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return ConnectionMessageDisplay; });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__angular_core__ = __webpack_require__("../../../core/@angular/core.es5.js");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_chat_codes_services_src_chat_messages__ = __webpack_require__("../../../../../../chat-codes-services/src/chat-messages.ts");
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return ConnectionMessageDisplay; });
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -13001,11 +12933,11 @@ var ConnectionMessageDisplay = (function () {
     return ConnectionMessageDisplay;
 }());
 __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Input"])(),
-    __metadata("design:type", typeof (_a = typeof __WEBPACK_IMPORTED_MODULE_1_chat_codes_services_src_chat_messages__["a" /* ConnectionMessageGroup */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_1_chat_codes_services_src_chat_messages__["a" /* ConnectionMessageGroup */]) === "function" && _a || Object)
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Input"])(),
+    __metadata("design:type", typeof (_a = typeof __WEBPACK_IMPORTED_MODULE_1_chat_codes_services_src_chat_messages__["b" /* ConnectionMessageGroup */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_1_chat_codes_services_src_chat_messages__["b" /* ConnectionMessageGroup */]) === "function" && _a || Object)
 ], ConnectionMessageDisplay.prototype, "messageGroup", void 0);
 ConnectionMessageDisplay = __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Component"])({
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Component"])({
         selector: 'connection-message-group',
         template: __webpack_require__("../../../../../src/app/chat-messages/connection-message.component.html"),
         styles: [__webpack_require__("../../../../../src/app/chat-messages/connection-message.component.css")],
@@ -13046,7 +12978,6 @@ module.exports = "<div class=\"full_edit_message\">\n\t<!-- <div class=\"btn-too
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return EditMessageDisplay; });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__angular_core__ = __webpack_require__("../../../core/@angular/core.es5.js");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_underscore__ = __webpack_require__("../../../../underscore/underscore.js");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_underscore___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_1_underscore__);
@@ -13054,6 +12985,7 @@ module.exports = "<div class=\"full_edit_message\">\n\t<!-- <div class=\"btn-too
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_3_chat_codes_services_src_editor_state_tracker__ = __webpack_require__("../../../../../../chat-codes-services/src/editor-state-tracker.ts");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_4_diff2html__ = __webpack_require__("../../../../diff2html/src/diff2html.js");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_4_diff2html___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_4_diff2html__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return EditMessageDisplay; });
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -13148,31 +13080,31 @@ var EditMessageDisplay = (function () {
     return EditMessageDisplay;
 }());
 __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Input"])(),
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Input"])(),
     __metadata("design:type", typeof (_a = typeof __WEBPACK_IMPORTED_MODULE_3_chat_codes_services_src_editor_state_tracker__["a" /* EditorStateTracker */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_3_chat_codes_services_src_editor_state_tracker__["a" /* EditorStateTracker */]) === "function" && _a || Object)
 ], EditMessageDisplay.prototype, "editorStateTracker", void 0);
 __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Input"])(),
-    __metadata("design:type", typeof (_b = typeof __WEBPACK_IMPORTED_MODULE_2_chat_codes_services_src_chat_messages__["b" /* EditGroup */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_2_chat_codes_services_src_chat_messages__["b" /* EditGroup */]) === "function" && _b || Object)
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Input"])(),
+    __metadata("design:type", typeof (_b = typeof __WEBPACK_IMPORTED_MODULE_2_chat_codes_services_src_chat_messages__["d" /* EditGroup */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_2_chat_codes_services_src_chat_messages__["d" /* EditGroup */]) === "function" && _b || Object)
 ], EditMessageDisplay.prototype, "messageGroup", void 0);
 __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Input"])(),
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Input"])(),
     __metadata("design:type", Object)
 ], EditMessageDisplay.prototype, "editor", void 0);
 __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["ViewChild"])('elem'),
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["ViewChild"])('elem'),
     __metadata("design:type", Object)
 ], EditMessageDisplay.prototype, "elem", void 0);
 __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Output"])(),
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Output"])(),
     __metadata("design:type", typeof (_c = typeof __WEBPACK_IMPORTED_MODULE_0__angular_core__["EventEmitter"] !== "undefined" && __WEBPACK_IMPORTED_MODULE_0__angular_core__["EventEmitter"]) === "function" && _c || Object)
 ], EditMessageDisplay.prototype, "willExpand", void 0);
 __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Output"])(),
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Output"])(),
     __metadata("design:type", typeof (_d = typeof __WEBPACK_IMPORTED_MODULE_0__angular_core__["EventEmitter"] !== "undefined" && __WEBPACK_IMPORTED_MODULE_0__angular_core__["EventEmitter"]) === "function" && _d || Object)
 ], EditMessageDisplay.prototype, "expanded", void 0);
 EditMessageDisplay = __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Component"])({
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Component"])({
         selector: 'edit-message-group',
         template: __webpack_require__("../../../../../src/app/chat-messages/edit-message.component.html"),
         styles: [__webpack_require__("../../../../../src/app/chat-messages/edit-message.component.css")],
@@ -13213,7 +13145,6 @@ module.exports = "<div #elem>{{message.getMessage()}}</div>"
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return ChatMessageDisplay; });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__angular_core__ = __webpack_require__("../../../core/@angular/core.es5.js");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_underscore__ = __webpack_require__("../../../../underscore/underscore.js");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_underscore___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_1_underscore__);
@@ -13221,6 +13152,7 @@ module.exports = "<div #elem>{{message.getMessage()}}</div>"
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_2_jquery___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_2_jquery__);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_3_chat_codes_services_src_chat_messages__ = __webpack_require__("../../../../../../chat-codes-services/src/chat-messages.ts");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_4_chat_codes_services_src_editor_state_tracker__ = __webpack_require__("../../../../../../chat-codes-services/src/editor-state-tracker.ts");
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return ChatMessageDisplay; });
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -13293,23 +13225,23 @@ var ChatMessageDisplay = (function () {
     return ChatMessageDisplay;
 }());
 __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Input"])(),
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Input"])(),
     __metadata("design:type", typeof (_a = typeof __WEBPACK_IMPORTED_MODULE_4_chat_codes_services_src_editor_state_tracker__["a" /* EditorStateTracker */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_4_chat_codes_services_src_editor_state_tracker__["a" /* EditorStateTracker */]) === "function" && _a || Object)
 ], ChatMessageDisplay.prototype, "editorStateTracker", void 0);
 __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Input"])(),
-    __metadata("design:type", typeof (_b = typeof __WEBPACK_IMPORTED_MODULE_3_chat_codes_services_src_chat_messages__["d" /* TextMessage */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_3_chat_codes_services_src_chat_messages__["d" /* TextMessage */]) === "function" && _b || Object)
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Input"])(),
+    __metadata("design:type", typeof (_b = typeof __WEBPACK_IMPORTED_MODULE_3_chat_codes_services_src_chat_messages__["c" /* TextMessage */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_3_chat_codes_services_src_chat_messages__["c" /* TextMessage */]) === "function" && _b || Object)
 ], ChatMessageDisplay.prototype, "message", void 0);
 __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Input"])(),
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Input"])(),
     __metadata("design:type", Object)
 ], ChatMessageDisplay.prototype, "editor", void 0);
 __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["ViewChild"])('elem'),
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["ViewChild"])('elem'),
     __metadata("design:type", Object)
 ], ChatMessageDisplay.prototype, "elem", void 0);
 ChatMessageDisplay = __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Component"])({
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Component"])({
         selector: 'chat-message',
         template: __webpack_require__("../../../../../src/app/chat-messages/single-message.component.html"),
         styles: [__webpack_require__("../../../../../src/app/chat-messages/single-message.component.css")],
@@ -13325,10 +13257,10 @@ var _a, _b;
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return AceEditorWrapper; });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__sharedb_ace_binding__ = __webpack_require__("../../../../../src/app/sharedb-ace-binding.ts");
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__sharedb_ace_binding__ = __webpack_require__("../../../../../src/app/editor/sharedb-ace-binding.ts");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_underscore__ = __webpack_require__("../../../../underscore/underscore.js");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_underscore___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_1_underscore__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return AceEditorWrapper; });
 
 
 var AceEditorWrapper = (function () {
@@ -13610,11 +13542,11 @@ module.exports = "<div *ngIf='!editorStateTracker.isAtLatest()' class=\"message\
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return EditorDisplay; });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__angular_core__ = __webpack_require__("../../../core/@angular/core.es5.js");
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__web_communication_service__ = __webpack_require__("../../../../../src/app/web-communication.service.ts");
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_chat_codes_services_src_communication_service__ = __webpack_require__("../../../../../../chat-codes-services/src/communication-service.ts");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_2_underscore__ = __webpack_require__("../../../../underscore/underscore.js");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_2_underscore___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_2_underscore__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return EditorDisplay; });
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -13714,19 +13646,6 @@ var EditorDisplay = (function () {
                 });
             }
         });
-        this.commLayer.history.subscribe(function (event) {
-            var editorState = event.editorState;
-            var editors = editorState.getAllEditors();
-            if (editors.length > 0) {
-                _this.selectFile(editors[0]);
-            }
-        });
-        this.commLayer.editorOpened.subscribe(function (event) {
-            var editorStateTracker = _this.commLayer.channelService.editorStateTracker;
-            var editorState = editorStateTracker.getEditorState(event.id);
-            _this.selectFile(editorState);
-            // this.onEditorOpened(editorState);
-        });
         var activeEditors = this.editorStateTracker.getActiveEditors();
         if (activeEditors.length > 0) {
             this.selectFile(activeEditors[0]);
@@ -13776,27 +13695,27 @@ var EditorDisplay = (function () {
     return EditorDisplay;
 }());
 __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["ViewChild"])('editor'),
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["ViewChild"])('editor'),
     __metadata("design:type", Object)
 ], EditorDisplay.prototype, "editor", void 0);
 __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Input"])(),
-    __metadata("design:type", typeof (_a = typeof __WEBPACK_IMPORTED_MODULE_1__web_communication_service__["a" /* WebCommunicationService */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_1__web_communication_service__["a" /* WebCommunicationService */]) === "function" && _a || Object)
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Input"])(),
+    __metadata("design:type", typeof (_a = typeof __WEBPACK_IMPORTED_MODULE_1_chat_codes_services_src_communication_service__["a" /* ChannelCommunicationService */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_1_chat_codes_services_src_communication_service__["a" /* ChannelCommunicationService */]) === "function" && _a || Object)
 ], EditorDisplay.prototype, "commLayer", void 0);
 __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Output"])(),
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Output"])(),
     __metadata("design:type", typeof (_b = typeof __WEBPACK_IMPORTED_MODULE_0__angular_core__["EventEmitter"] !== "undefined" && __WEBPACK_IMPORTED_MODULE_0__angular_core__["EventEmitter"]) === "function" && _b || Object)
 ], EditorDisplay.prototype, "editorChanged", void 0);
 __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Output"])(),
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Output"])(),
     __metadata("design:type", typeof (_c = typeof __WEBPACK_IMPORTED_MODULE_0__angular_core__["EventEmitter"] !== "undefined" && __WEBPACK_IMPORTED_MODULE_0__angular_core__["EventEmitter"]) === "function" && _c || Object)
 ], EditorDisplay.prototype, "cursorPositionChanged", void 0);
 __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Output"])(),
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Output"])(),
     __metadata("design:type", typeof (_d = typeof __WEBPACK_IMPORTED_MODULE_0__angular_core__["EventEmitter"] !== "undefined" && __WEBPACK_IMPORTED_MODULE_0__angular_core__["EventEmitter"]) === "function" && _d || Object)
 ], EditorDisplay.prototype, "cursorSelectionChanged", void 0);
 EditorDisplay = __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Component"])({
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Component"])({
         selector: 'code-editor',
         template: __webpack_require__("../../../../../src/app/editor/editor.component.html"),
         styles: [__webpack_require__("../../../../../src/app/editor/editor.component.css")],
@@ -13809,246 +13728,13 @@ var _a, _b, _c, _d;
 
 /***/ }),
 
-/***/ "../../../../../src/app/name-entry/name-entry.component.css":
-/***/ (function(module, exports, __webpack_require__) {
-
-exports = module.exports = __webpack_require__("../../../../css-loader/lib/css-base.js")(false);
-// imports
-
-
-// module
-exports.push([module.i, ".name-entry {\n    /*height: 100%;\n    padding-top: 20%;\n    margin: auto;\n    padding-left: 20%;*/\n}\n", ""]);
-
-// exports
-
-
-/*** EXPORTS FROM exports-loader ***/
-module.exports = module.exports.toString();
-
-/***/ }),
-
-/***/ "../../../../../src/app/name-entry/name-entry.component.html":
-/***/ (function(module, exports) {
-
-module.exports = "<div class=\"container-fluid\">\n    <div class=\"name-label row\">\n        <div class=\"col-12\">\n            <label for=\"uname\">Username:</label>\n        </div>\n    </div>\n    <div class=\"name-entry row\">\n        <div class=\"col-12\">\n            <div class=\"input-group input-group-lg\">\n                <input #inp id='uname' class='form-control' [class]=\"feedbackClass\" placeholder=\"Your name\" type='text' (ngModelChange)=\"valueChange($event)\" [(ngModel)]=\"value\" (keydown)=\"onKeydown($event)\"/>\n                <span class=\"input-group-btn\">\n                    <button class=\"btn btn-primary\" type=\"button\" (click)='doSubmit()'>Go</button>\n                </span>\n            </div>\n        </div>\n    </div>\n    <div class=\"feedback row\">\n        <div class=\"col-12\">\n            {{feedback}}\n        </div>\n    </div>\n</div>\n"
-
-/***/ }),
-
-/***/ "../../../../../src/app/name-entry/name-entry.component.ts":
+/***/ "../../../../../src/app/editor/sharedb-ace-binding.ts":
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return NameEntry; });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__angular_core__ = __webpack_require__("../../../core/@angular/core.es5.js");
-var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
-    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
-    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
-    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
-    return c > 3 && r && Object.defineProperty(target, key, r), r;
-};
-var __metadata = (this && this.__metadata) || function (k, v) {
-    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
-};
-
-var NameEntry = (function () {
-    function NameEntry() {
-        this.onEnter = new __WEBPACK_IMPORTED_MODULE_0__angular_core__["EventEmitter"]();
-        this.value = localStorage.getItem('default-username') || '';
-        this.feedback = '';
-        this.feedbackClass = '';
-        this.MAX_LENGTH = 20;
-    }
-    NameEntry.prototype.ngOnInit = function () {
-        var inpElem = this.inp.nativeElement;
-        setTimeout(function () {
-            inpElem.focus();
-            inpElem.select();
-        }, 100);
-    };
-    NameEntry.prototype.valueChange = function (name) {
-        var value = name.trim();
-        if (value.length === 0) {
-            this.feedback = 'Must be more than 0 characters';
-            this.feedbackClass = 'error';
-        }
-        else if (value.length > this.MAX_LENGTH) {
-            this.feedback = 'Must be ' + this.MAX_LENGTH + ' characters or fewer';
-            this.feedbackClass = 'error';
-        }
-        else {
-            this.feedback = '';
-            this.feedbackClass = '';
-        }
-    };
-    NameEntry.prototype.onKeydown = function (event) {
-        if (event.keyCode === 13) {
-            this.doSubmit();
-        }
-    };
-    NameEntry.prototype.doSubmit = function () {
-        var value = this.value.trim();
-        if (value.length > 0 && value.length < this.MAX_LENGTH) {
-            localStorage.setItem('default-username', value);
-            this.onEnter.emit(value);
-        }
-    };
-    return NameEntry;
-}());
-__decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Output"])(),
-    __metadata("design:type", typeof (_a = typeof __WEBPACK_IMPORTED_MODULE_0__angular_core__["EventEmitter"] !== "undefined" && __WEBPACK_IMPORTED_MODULE_0__angular_core__["EventEmitter"]) === "function" && _a || Object)
-], NameEntry.prototype, "onEnter", void 0);
-__decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["ViewChild"])('inp'),
-    __metadata("design:type", Object)
-], NameEntry.prototype, "inp", void 0);
-NameEntry = __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Component"])({
-        selector: 'name-entry',
-        template: __webpack_require__("../../../../../src/app/name-entry/name-entry.component.html"),
-        styles: [__webpack_require__("../../../../../src/app/name-entry/name-entry.component.css")],
-    })
-], NameEntry);
-
-var _a;
-//# sourceMappingURL=name-entry.component.js.map
-
-/***/ }),
-
-/***/ "../../../../../src/app/pusher-credentials.ts":
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return CREDENTIALS; });
-var CREDENTIALS = {
-    key: "44f522b8df5a8a3ccf74",
-    cluster: "us2"
-};
-//# sourceMappingURL=pusher-credentials.js.map
-
-/***/ }),
-
-/***/ "../../../../../src/app/python_out/python_out.component.css":
-/***/ (function(module, exports, __webpack_require__) {
-
-exports = module.exports = __webpack_require__("../../../../css-loader/lib/css-base.js")(false);
-// imports
-
-
-// module
-exports.push([module.i, ".terminalContainer {\n    height: 100%;\n    background-color: #333;\n}\n\n.run {\n    position: absolute;\n    right: 30px;\n    z-index: 5;\n}", ""]);
-
-// exports
-
-
-/*** EXPORTS FROM exports-loader ***/
-module.exports = module.exports.toString();
-
-/***/ }),
-
-/***/ "../../../../../src/app/python_out/python_out.component.html":
-/***/ (function(module, exports) {
-
-module.exports = "<button class='run btn-sm btn btn-success' (click)='run()'>Run</button>\n<div #terminal class='terminalContainer'></div>\n"
-
-/***/ }),
-
-/***/ "../../../../../src/app/python_out/python_out.component.ts":
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return PythonOutputDisplay; });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__angular_core__ = __webpack_require__("../../../core/@angular/core.es5.js");
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__web_communication_service__ = __webpack_require__("../../../../../src/app/web-communication.service.ts");
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2_xterm__ = __webpack_require__("../../../../xterm/lib/xterm.js");
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2_xterm___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_2_xterm__);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3_skulpt__ = __webpack_require__("../../../../skulpt/main.js");
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3_skulpt___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_3_skulpt__);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_4__editor_editor_component__ = __webpack_require__("../../../../../src/app/editor/editor.component.ts");
-var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
-    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
-    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
-    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
-    return c > 3 && r && Object.defineProperty(target, key, r), r;
-};
-var __metadata = (this && this.__metadata) || function (k, v) {
-    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
-};
-
-
-
-
-
-var PythonOutputDisplay = (function () {
-    function PythonOutputDisplay() {
-    }
-    PythonOutputDisplay.prototype.ngOnInit = function () {
-        __WEBPACK_IMPORTED_MODULE_2_xterm__["loadAddon"]('fit'); // Load the `fit` addon
-        this.term = new __WEBPACK_IMPORTED_MODULE_2_xterm__();
-        this.term.open(this.terminalElement.nativeElement, false);
-        this.term.fit(); // Make the terminal's size and geometry fit the size of #terminal-container
-        // this.term.write('$ ');
-    };
-    PythonOutputDisplay.prototype.run = function () {
-        var _this = this;
-        var editorStateTracker = this.commLayer.getEditorStateTracker();
-        function builtinRead(x) {
-            if (__WEBPACK_IMPORTED_MODULE_3_skulpt__["builtinFiles"] === undefined || __WEBPACK_IMPORTED_MODULE_3_skulpt__["builtinFiles"]["files"][x] === undefined) {
-                throw "File not found: '" + x + "'";
-            }
-            return __WEBPACK_IMPORTED_MODULE_3_skulpt__["builtinFiles"]["files"][x];
-        }
-        __WEBPACK_IMPORTED_MODULE_3_skulpt__["python3"] = true;
-        __WEBPACK_IMPORTED_MODULE_3_skulpt__["configure"]({ output: function (text) {
-                _this.term.write(text);
-            }, read: builtinRead });
-        var editorInstance = this.editor.getEditorInstance();
-        var editorValue = editorInstance.getValue();
-        this.term.clear();
-        this.term.reset();
-        var myPromise = __WEBPACK_IMPORTED_MODULE_3_skulpt__["misceval"].asyncToPromise(function () {
-            return __WEBPACK_IMPORTED_MODULE_3_skulpt__["importMainWithBody"]("<stdin>", false, editorValue, true);
-        });
-        myPromise.then(function (mod) {
-        }, function (err) {
-            _this.term.writeln(err.toString());
-        });
-    };
-    return PythonOutputDisplay;
-}());
-__decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Input"])(),
-    __metadata("design:type", typeof (_a = typeof __WEBPACK_IMPORTED_MODULE_1__web_communication_service__["a" /* WebCommunicationService */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_1__web_communication_service__["a" /* WebCommunicationService */]) === "function" && _a || Object)
-], PythonOutputDisplay.prototype, "commLayer", void 0);
-__decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Input"])(),
-    __metadata("design:type", typeof (_b = typeof __WEBPACK_IMPORTED_MODULE_4__editor_editor_component__["a" /* EditorDisplay */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_4__editor_editor_component__["a" /* EditorDisplay */]) === "function" && _b || Object)
-], PythonOutputDisplay.prototype, "editor", void 0);
-__decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["ViewChild"])('terminal'),
-    __metadata("design:type", Object)
-], PythonOutputDisplay.prototype, "terminalElement", void 0);
-PythonOutputDisplay = __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Component"])({
-        selector: 'python-output',
-        template: __webpack_require__("../../../../../src/app/python_out/python_out.component.html"),
-        styles: [__webpack_require__("../../../../../src/app/python_out/python_out.component.css")],
-    }),
-    __metadata("design:paramtypes", [])
-], PythonOutputDisplay);
-
-var _a, _b;
-//# sourceMappingURL=python_out.component.js.map
-
-/***/ }),
-
-/***/ "../../../../../src/app/sharedb-ace-binding.ts":
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return SharedbAceBinding; });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_logdown__ = __webpack_require__("../../../../logdown/dist/logdown.min.js");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_logdown___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0_logdown__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return SharedbAceBinding; });
 /**
  * @fileOverview
  * @name sharedb-ace-binding.js
@@ -14283,6 +13969,226 @@ var SharedbAceBinding = (function () {
 
 /***/ }),
 
+/***/ "../../../../../src/app/name-entry/name-entry.component.css":
+/***/ (function(module, exports, __webpack_require__) {
+
+exports = module.exports = __webpack_require__("../../../../css-loader/lib/css-base.js")(false);
+// imports
+
+
+// module
+exports.push([module.i, ".name-entry {\n    /*height: 100%;\n    padding-top: 20%;\n    margin: auto;\n    padding-left: 20%;*/\n}\n", ""]);
+
+// exports
+
+
+/*** EXPORTS FROM exports-loader ***/
+module.exports = module.exports.toString();
+
+/***/ }),
+
+/***/ "../../../../../src/app/name-entry/name-entry.component.html":
+/***/ (function(module, exports) {
+
+module.exports = "<div class=\"container-fluid\">\n    <div class=\"name-label row\">\n        <div class=\"col-12\">\n            <label for=\"uname\">Username:</label>\n        </div>\n    </div>\n    <div class=\"name-entry row\">\n        <div class=\"col-12\">\n            <div class=\"input-group input-group-lg\">\n                <input #inp id='uname' class='form-control' [class]=\"feedbackClass\" placeholder=\"Your name\" type='text' (ngModelChange)=\"valueChange($event)\" [(ngModel)]=\"value\" (keydown)=\"onKeydown($event)\"/>\n                <span class=\"input-group-btn\">\n                    <button class=\"btn btn-primary\" type=\"button\" (click)='doSubmit()'>Go</button>\n                </span>\n            </div>\n        </div>\n    </div>\n    <div class=\"feedback row\">\n        <div class=\"col-12\">\n            {{feedback}}\n        </div>\n    </div>\n</div>\n"
+
+/***/ }),
+
+/***/ "../../../../../src/app/name-entry/name-entry.component.ts":
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__angular_core__ = __webpack_require__("../../../core/@angular/core.es5.js");
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return NameEntry; });
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+
+var NameEntry = (function () {
+    function NameEntry() {
+        this.onEnter = new __WEBPACK_IMPORTED_MODULE_0__angular_core__["EventEmitter"]();
+        this.value = localStorage.getItem('default-username') || '';
+        this.feedback = '';
+        this.feedbackClass = '';
+        this.MAX_LENGTH = 20;
+    }
+    NameEntry.prototype.ngOnInit = function () {
+        var inpElem = this.inp.nativeElement;
+        setTimeout(function () {
+            inpElem.focus();
+            inpElem.select();
+        }, 100);
+    };
+    NameEntry.prototype.valueChange = function (name) {
+        var value = name.trim();
+        if (value.length === 0) {
+            this.feedback = 'Must be more than 0 characters';
+            this.feedbackClass = 'error';
+        }
+        else if (value.length > this.MAX_LENGTH) {
+            this.feedback = 'Must be ' + this.MAX_LENGTH + ' characters or fewer';
+            this.feedbackClass = 'error';
+        }
+        else {
+            this.feedback = '';
+            this.feedbackClass = '';
+        }
+    };
+    NameEntry.prototype.onKeydown = function (event) {
+        if (event.keyCode === 13) {
+            this.doSubmit();
+        }
+    };
+    NameEntry.prototype.doSubmit = function () {
+        var value = this.value.trim();
+        if (value.length > 0 && value.length < this.MAX_LENGTH) {
+            localStorage.setItem('default-username', value);
+            this.onEnter.emit(value);
+        }
+    };
+    return NameEntry;
+}());
+__decorate([
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Output"])(),
+    __metadata("design:type", typeof (_a = typeof __WEBPACK_IMPORTED_MODULE_0__angular_core__["EventEmitter"] !== "undefined" && __WEBPACK_IMPORTED_MODULE_0__angular_core__["EventEmitter"]) === "function" && _a || Object)
+], NameEntry.prototype, "onEnter", void 0);
+__decorate([
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["ViewChild"])('inp'),
+    __metadata("design:type", Object)
+], NameEntry.prototype, "inp", void 0);
+NameEntry = __decorate([
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Component"])({
+        selector: 'name-entry',
+        template: __webpack_require__("../../../../../src/app/name-entry/name-entry.component.html"),
+        styles: [__webpack_require__("../../../../../src/app/name-entry/name-entry.component.css")],
+    })
+], NameEntry);
+
+var _a;
+//# sourceMappingURL=name-entry.component.js.map
+
+/***/ }),
+
+/***/ "../../../../../src/app/python_out/python_out.component.css":
+/***/ (function(module, exports, __webpack_require__) {
+
+exports = module.exports = __webpack_require__("../../../../css-loader/lib/css-base.js")(false);
+// imports
+
+
+// module
+exports.push([module.i, ".terminalContainer {\n    height: 100%;\n    background-color: #333;\n}\n\n.run {\n    position: absolute;\n    right: 30px;\n    z-index: 5;\n}", ""]);
+
+// exports
+
+
+/*** EXPORTS FROM exports-loader ***/
+module.exports = module.exports.toString();
+
+/***/ }),
+
+/***/ "../../../../../src/app/python_out/python_out.component.html":
+/***/ (function(module, exports) {
+
+module.exports = "<button class='run btn-sm btn btn-success' (click)='run()'>Run</button>\n<div #terminal class='terminalContainer'></div>\n"
+
+/***/ }),
+
+/***/ "../../../../../src/app/python_out/python_out.component.ts":
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__angular_core__ = __webpack_require__("../../../core/@angular/core.es5.js");
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_xterm__ = __webpack_require__("../../../../xterm/lib/xterm.js");
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_xterm___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_1_xterm__);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2_skulpt__ = __webpack_require__("../../../../skulpt/main.js");
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2_skulpt___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_2_skulpt__);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__editor_editor_component__ = __webpack_require__("../../../../../src/app/editor/editor.component.ts");
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_4_chat_codes_services_src_communication_service__ = __webpack_require__("../../../../../../chat-codes-services/src/communication-service.ts");
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return PythonOutputDisplay; });
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+
+
+
+
+
+var PythonOutputDisplay = (function () {
+    function PythonOutputDisplay() {
+    }
+    PythonOutputDisplay.prototype.ngOnInit = function () {
+        __WEBPACK_IMPORTED_MODULE_1_xterm__["loadAddon"]('fit'); // Load the `fit` addon
+        this.term = new __WEBPACK_IMPORTED_MODULE_1_xterm__();
+        this.term.open(this.terminalElement.nativeElement, false);
+        this.term.fit(); // Make the terminal's size and geometry fit the size of #terminal-container
+        // this.term.write('$ ');
+    };
+    PythonOutputDisplay.prototype.run = function () {
+        var _this = this;
+        var editorStateTracker = this.commLayer.getEditorStateTracker();
+        function builtinRead(x) {
+            if (__WEBPACK_IMPORTED_MODULE_2_skulpt__["builtinFiles"] === undefined || __WEBPACK_IMPORTED_MODULE_2_skulpt__["builtinFiles"]["files"][x] === undefined) {
+                throw "File not found: '" + x + "'";
+            }
+            return __WEBPACK_IMPORTED_MODULE_2_skulpt__["builtinFiles"]["files"][x];
+        }
+        __WEBPACK_IMPORTED_MODULE_2_skulpt__["python3"] = true;
+        __WEBPACK_IMPORTED_MODULE_2_skulpt__["configure"]({ output: function (text) {
+                _this.term.write(text);
+            }, read: builtinRead });
+        var editorInstance = this.editor.getEditorInstance();
+        var editorValue = editorInstance.getValue();
+        this.term.clear();
+        this.term.reset();
+        var myPromise = __WEBPACK_IMPORTED_MODULE_2_skulpt__["misceval"].asyncToPromise(function () {
+            return __WEBPACK_IMPORTED_MODULE_2_skulpt__["importMainWithBody"]("<stdin>", false, editorValue, true);
+        });
+        myPromise.then(function (mod) {
+        }, function (err) {
+            _this.term.writeln(err.toString());
+        });
+    };
+    return PythonOutputDisplay;
+}());
+__decorate([
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Input"])(),
+    __metadata("design:type", typeof (_a = typeof __WEBPACK_IMPORTED_MODULE_4_chat_codes_services_src_communication_service__["a" /* ChannelCommunicationService */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_4_chat_codes_services_src_communication_service__["a" /* ChannelCommunicationService */]) === "function" && _a || Object)
+], PythonOutputDisplay.prototype, "commLayer", void 0);
+__decorate([
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Input"])(),
+    __metadata("design:type", typeof (_b = typeof __WEBPACK_IMPORTED_MODULE_3__editor_editor_component__["a" /* EditorDisplay */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_3__editor_editor_component__["a" /* EditorDisplay */]) === "function" && _b || Object)
+], PythonOutputDisplay.prototype, "editor", void 0);
+__decorate([
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["ViewChild"])('terminal'),
+    __metadata("design:type", Object)
+], PythonOutputDisplay.prototype, "terminalElement", void 0);
+PythonOutputDisplay = __decorate([
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Component"])({
+        selector: 'python-output',
+        template: __webpack_require__("../../../../../src/app/python_out/python_out.component.html"),
+        styles: [__webpack_require__("../../../../../src/app/python_out/python_out.component.css")],
+    }),
+    __metadata("design:paramtypes", [])
+], PythonOutputDisplay);
+
+var _a, _b;
+//# sourceMappingURL=python_out.component.js.map
+
+/***/ }),
+
 /***/ "../../../../../src/app/terminal/terminal.component.css":
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -14312,11 +14218,11 @@ module.exports = "<div #terminal class='terminalContainer'></div>"
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return TerminalDisplay; });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__angular_core__ = __webpack_require__("../../../core/@angular/core.es5.js");
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__web_communication_service__ = __webpack_require__("../../../../../src/app/web-communication.service.ts");
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2_xterm__ = __webpack_require__("../../../../xterm/lib/xterm.js");
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2_xterm___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_2_xterm__);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_xterm__ = __webpack_require__("../../../../xterm/lib/xterm.js");
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_xterm___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_1_xterm__);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2_chat_codes_services_src_communication_service__ = __webpack_require__("../../../../../../chat-codes-services/src/communication-service.ts");
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return TerminalDisplay; });
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -14334,30 +14240,30 @@ var TerminalDisplay = (function () {
     }
     TerminalDisplay.prototype.ngOnInit = function () {
         var _this = this;
-        __WEBPACK_IMPORTED_MODULE_2_xterm__["loadAddon"]('fit'); // Load the `fit` addon
-        var term = new __WEBPACK_IMPORTED_MODULE_2_xterm__();
+        __WEBPACK_IMPORTED_MODULE_1_xterm__["loadAddon"]('fit'); // Load the `fit` addon
+        var term = new __WEBPACK_IMPORTED_MODULE_1_xterm__();
         term.open(this.terminalElement.nativeElement, false);
         term.fit(); // Make the terminal's size and geometry fit the size of #terminal-container
         term.write('$ ');
         term.on('data', function (key) {
             _this.commLayer.writeToTerminal(key);
         });
-        this.commLayer.terminalData.subscribe(function (event) {
+        this.commLayer.on('terminal-data', function (event) {
             term.write(event.data);
         });
     };
     return TerminalDisplay;
 }());
 __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Input"])(),
-    __metadata("design:type", typeof (_a = typeof __WEBPACK_IMPORTED_MODULE_1__web_communication_service__["a" /* WebCommunicationService */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_1__web_communication_service__["a" /* WebCommunicationService */]) === "function" && _a || Object)
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Input"])(),
+    __metadata("design:type", typeof (_a = typeof __WEBPACK_IMPORTED_MODULE_2_chat_codes_services_src_communication_service__["a" /* ChannelCommunicationService */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_2_chat_codes_services_src_communication_service__["a" /* ChannelCommunicationService */]) === "function" && _a || Object)
 ], TerminalDisplay.prototype, "commLayer", void 0);
 __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["ViewChild"])('terminal'),
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["ViewChild"])('terminal'),
     __metadata("design:type", Object)
 ], TerminalDisplay.prototype, "terminalElement", void 0);
 TerminalDisplay = __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Component"])({
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Component"])({
         selector: 'terminal',
         template: __webpack_require__("../../../../../src/app/terminal/terminal.component.html"),
         styles: [__webpack_require__("../../../../../src/app/terminal/terminal.component.css")],
@@ -14381,8 +14287,8 @@ module.exports = "<span class=\"time\">{{parens ? '(':''}}{{t | amTimeAgo}}{{par
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return TimestampDisplay; });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__angular_core__ = __webpack_require__("../../../core/@angular/core.es5.js");
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return TimestampDisplay; });
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -14400,15 +14306,15 @@ var TimestampDisplay = (function () {
     return TimestampDisplay;
 }());
 __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Input"])(),
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Input"])(),
     __metadata("design:type", Number)
 ], TimestampDisplay.prototype, "t", void 0);
 __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Input"])(),
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Input"])(),
     __metadata("design:type", Boolean)
 ], TimestampDisplay.prototype, "parens", void 0);
 TimestampDisplay = __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Component"])({
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Component"])({
         selector: 'timestamp',
         template: __webpack_require__("../../../../../src/app/timestamp/timestamp.component.html"),
         styleUrls: [],
@@ -14449,9 +14355,9 @@ module.exports = "<span class='user badge badge-default' [class.typing]=\"typing
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return UserDisplay; });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__angular_core__ = __webpack_require__("../../../core/@angular/core.es5.js");
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_chat_codes_services_src_chat_user__ = __webpack_require__("../../../../../../chat-codes-services/src/chat-user.ts");
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return UserDisplay; });
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -14479,11 +14385,11 @@ var UserDisplay = (function () {
     return UserDisplay;
 }());
 __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Input"])(),
-    __metadata("design:type", typeof (_a = typeof __WEBPACK_IMPORTED_MODULE_1_chat_codes_services_src_chat_user__["a" /* ChatUser */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_1_chat_codes_services_src_chat_user__["a" /* ChatUser */]) === "function" && _a || Object)
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Input"])(),
+    __metadata("design:type", typeof (_a = typeof __WEBPACK_IMPORTED_MODULE_1_chat_codes_services_src_chat_user__["b" /* ChatUser */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_1_chat_codes_services_src_chat_user__["b" /* ChatUser */]) === "function" && _a || Object)
 ], UserDisplay.prototype, "user", void 0);
 UserDisplay = __decorate([
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Component"])({
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["Component"])({
         selector: 'user-display',
         template: __webpack_require__("../../../../../src/app/user/user-display.component.html"),
         styles: [__webpack_require__("../../../../../src/app/user/user-display.component.css")],
@@ -14492,80 +14398,6 @@ UserDisplay = __decorate([
 
 var _a;
 //# sourceMappingURL=user-display.component.js.map
-
-/***/ }),
-
-/***/ "../../../../../src/app/web-communication.service.ts":
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return WebCommunicationService; });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__angular_core__ = __webpack_require__("../../../core/@angular/core.es5.js");
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_chat_codes_services_src_communication_service__ = __webpack_require__("../../../../../../chat-codes-services/src/communication-service.ts");
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__pusher_credentials__ = __webpack_require__("../../../../../src/app/pusher-credentials.ts");
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__editor_ace_editor_wrapper__ = __webpack_require__("../../../../../src/app/editor/ace-editor-wrapper.ts");
-
-
-
-
-var WebCommunicationService = (function () {
-    function WebCommunicationService(username, channelName) {
-        var _this = this;
-        this.channelName = channelName;
-        this.membersChanged = new __WEBPACK_IMPORTED_MODULE_0__angular_core__["EventEmitter"]();
-        this.message = new __WEBPACK_IMPORTED_MODULE_0__angular_core__["EventEmitter"]();
-        this.typingStatus = new __WEBPACK_IMPORTED_MODULE_0__angular_core__["EventEmitter"]();
-        this.editorEvent = new __WEBPACK_IMPORTED_MODULE_0__angular_core__["EventEmitter"]();
-        this.cursorEvent = new __WEBPACK_IMPORTED_MODULE_0__angular_core__["EventEmitter"]();
-        this.editorState = new __WEBPACK_IMPORTED_MODULE_0__angular_core__["EventEmitter"]();
-        this.editorOpened = new __WEBPACK_IMPORTED_MODULE_0__angular_core__["EventEmitter"]();
-        this.terminalData = new __WEBPACK_IMPORTED_MODULE_0__angular_core__["EventEmitter"]();
-        this.history = new __WEBPACK_IMPORTED_MODULE_0__angular_core__["EventEmitter"]();
-        this.commService = new __WEBPACK_IMPORTED_MODULE_1_chat_codes_services_src_communication_service__["a" /* CommunicationService */]({
-            username: username,
-            host: 'localhost',
-            port: 8000,
-            // host: 'chat-codes.herokuapp.com',
-            // port: 80,
-            key: __WEBPACK_IMPORTED_MODULE_2__pusher_credentials__["a" /* CREDENTIALS */].key,
-            cluster: __WEBPACK_IMPORTED_MODULE_2__pusher_credentials__["a" /* CREDENTIALS */].cluster
-        }, __WEBPACK_IMPORTED_MODULE_3__editor_ace_editor_wrapper__["a" /* AceEditorWrapper */]);
-        this.channelService = this.commService.createChannelWithName(channelName);
-        this.channelService.on('members-changed', function (e) { _this.membersChanged.emit(e); });
-        this.channelService.on('message', function (e) { _this.message.emit(e); });
-        this.channelService.on('typing-status', function (e) { _this.typingStatus.emit(e); });
-        this.channelService.on('editor-event', function (e) { _this.editorEvent.emit(e); });
-        this.channelService.on('cursor-event', function (e) { _this.cursorEvent.emit(e); });
-        this.channelService.on('editor-state', function (e) { _this.editorState.emit(e); });
-        this.channelService.on('editor-opened', function (e) { _this.editorOpened.emit(e); });
-        this.channelService.on('terminal-data', function (e) { _this.terminalData.emit(e); });
-        this.channelService.on('history', function (e) { _this.history.emit(e); });
-        this.userList = this.channelService.userList;
-        this.messageGroups = this.channelService.messageGroups;
-    }
-    WebCommunicationService.prototype.ngOnDestroy = function () {
-        this.commService.destroy();
-    };
-    WebCommunicationService.prototype.ready = function () { return this.channelService.ready(); };
-    ;
-    WebCommunicationService.prototype.sendTextMessage = function (data) { this.channelService.sendTextMessage(data); };
-    ;
-    WebCommunicationService.prototype.sendTypingStatus = function (data) { this.channelService.sendTypingStatus(data); };
-    ;
-    WebCommunicationService.prototype.emitEditorChanged = function (data) { this.channelService.emitEditorChanged(data); };
-    ;
-    // public emitCursorPositionChanged(data) { this.channelService.emitCursorPositionChanged(data); };
-    // public emitCursorSelectionChanged(data) { this.channelService.emitCursorSelectionChanged(data); };
-    WebCommunicationService.prototype.writeToTerminal = function (data) { this.channelService.writeToTerminal(data); };
-    ;
-    WebCommunicationService.prototype.getActiveEditors = function () { return this.channelService.getActiveEditors(); };
-    ;
-    WebCommunicationService.prototype.getEditorStateTracker = function () { return this.channelService.editorStateTracker; };
-    ;
-    return WebCommunicationService;
-}());
-
-//# sourceMappingURL=web-communication.service.js.map
 
 /***/ }),
 
@@ -14607,9 +14439,9 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 
 
 if (__WEBPACK_IMPORTED_MODULE_3__environments_environment__["a" /* environment */].production) {
-    Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["enableProdMode"])();
+    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__angular_core__["enableProdMode"])();
 }
-Object(__WEBPACK_IMPORTED_MODULE_1__angular_platform_browser_dynamic__["a" /* platformBrowserDynamic */])().bootstrapModule(__WEBPACK_IMPORTED_MODULE_2__app_app_module__["a" /* AppModule */]);
+__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_1__angular_platform_browser_dynamic__["a" /* platformBrowserDynamic */])().bootstrapModule(__WEBPACK_IMPORTED_MODULE_2__app_app_module__["a" /* AppModule */]);
 //# sourceMappingURL=main.js.map
 
 /***/ }),
@@ -14904,19 +14736,19 @@ webpackContext.id = "../../../../xterm/lib/addons recursive ^\\.\\/.*$";
 /***/ }),
 
 /***/ 0:
+/***/ (function(module, exports) {
+
+/* (ignored) */
+
+/***/ }),
+
+/***/ 1:
 /***/ (function(module, exports, __webpack_require__) {
 
 module.exports = __webpack_require__("../../../../../src/main.ts");
 
 
-/***/ }),
-
-/***/ 1:
-/***/ (function(module, exports) {
-
-/* (ignored) */
-
 /***/ })
 
-},[0]);
+},[1]);
 //# sourceMappingURL=main.bundle.js.map

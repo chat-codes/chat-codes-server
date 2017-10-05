@@ -13,7 +13,6 @@ import * as WebSocketJSONStream from 'websocket-json-stream';
 import * as otText from 'ot-text';
 import * as Logger from 'js-logger';
 import {EventEmitter} from 'events';
-import * as nodeCleanup from 'node-cleanup';
 
 Logger.useDefaults();
 
