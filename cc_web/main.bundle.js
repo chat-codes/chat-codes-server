@@ -11981,7 +11981,7 @@ var WebSocketCommunicationLayer = (function () {
         this.disconnectListeners = [];
         this.username = authInfo.username;
         this.wsPromise = new Promise(function (resolve, reject) {
-            var ws = new WebSocket("ws://" + authInfo.host);
+            var ws = new WebSocket("wss://" + authInfo.host);
             ws.addEventListener('open', function (event) {
                 resolve(ws);
             });
