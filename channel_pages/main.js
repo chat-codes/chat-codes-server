@@ -2,7 +2,7 @@ var sharedb = require('sharedb/lib/client');
 var $ = require('jquery');
 
 // Open WebSocket connection to ShareDB server
-var socket = new WebSocket('ws://' + window.location.host);
+var socket = new WebSocket('wss://' + window.location.host);
 var connection = new sharedb.Connection(socket);
 var doc = connection.get('chatcodes', 'channels');
 
@@ -17,7 +17,7 @@ function showChannels() {
     var i = 1;
     $('body').html('');
     doc.data['channels'].forEach(function(channel) {
-        if(!channel.archived && topic === channel.topic) {
+        if(!channel.archived && (!topic || (topic === channel.topic))) {
             var link = $('<a />');
             var href = window.location.protocol+'//'+window.location.host+'/'+channel.channelName;
             link.attr({
