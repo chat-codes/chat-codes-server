@@ -244,7 +244,7 @@ export class ChatCodesServer {
 const optionDefinitions = [
 	{ name: 'memdb', alias: 'm', type: Boolean, defaultValue: false },
 	{ name: 'mongocreds', alias: 'c', type: String, defaultValue: path.join(__dirname, '..', 'db_creds.json')},
-	{ name: 'port', alias: 'p', type: Number, defaultValue: 8000 },
+	{ name: 'port', alias: 'p', type: Number, defaultValue: 8080 },
 ];
 const options = commandLineArgs(optionDefinitions);
 
