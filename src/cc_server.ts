@@ -18,16 +18,20 @@ Logger.useDefaults();
 export class ChatCodesServer {
 	private db;
 	private sharedb;
-	private members:{[id:string]:any} = {};
 	private app = express();
 	private server:http.Server;
 	private wss:WebSocket.Server;
 	private channels:Map<string, ChatCodesChannelServer> = new Map();
 	private channelsDoc:Promise<ShareDB.Doc>;
 	constructor(private shareDBPort:number, private shareDBURL:string) {
-		this.app.use('/channels', express.static(path.join(__dirname, '..', 'channel_pages')));
+		this.app.use('/channels', (req, res, next) => {
+			next();
+		}, express.static(path.join(__dirname, '..', 'channel_pages')));
 		this.app.use('/:channelName', (req, res, next) => {
 			const channelName:string = req.params.channelName;
+			if(channelName==='favicon.ico') {
+				return;
+			}
 			this.isValidChannelName(channelName).then((valid) => {
 				if(valid) {
 					next();
@@ -36,7 +40,9 @@ export class ChatCodesServer {
 				}
 			});
 		}, express.static(path.join(__dirname, '..', 'cc_web')));
-		this.app.use('/:channelName/:convo', express.static(path.join(__dirname, '..', 'cc_web')));
+		this.app.use('/:channelName/:convo', (req, res, next) => {
+			next();
+		}, express.static(path.join(__dirname, '..', 'cc_web')));
 
 		this.app.use('/', (req, res, next) => {
 			const code = req.query.code;
@@ -55,12 +61,6 @@ export class ChatCodesServer {
 				res.redirect(`/${channelName}`);
 			});
 		});
-		// this.app.post('/new', (req, res, next) => {
-		// 	console.log(req,res);
-		// });
-		// this.app.get('*', (req, res) => {
-		// 	console.log(req);
-		// })
 		this.server = http.createServer(this.app);
 		this.wss = new WebSocket.Server( { server: this.server });
 		this.setupShareDB();
@@ -85,8 +85,9 @@ export class ChatCodesServer {
 							const {payload, messageID} = data;
 							const channel:string = payload['channel'];
 							const channelID:string = payload['channelID'];
-							const cs:ChatCodesChannelServer = this.createNamespace(channel, channelID);
-							cs.addMember(payload, ws).then(() => {
+							let cs:ChatCodesChannelServer;
+							if( channelID && this.channels.has(channel)  && this.channels.get(channel).getChannelID() === channelID) {
+								cs = this.channels.get(channel);
 								ws.send(JSON.stringify({
 									channel,
 									messageID,
@@ -96,7 +97,20 @@ export class ChatCodesServer {
 										ns: cs.getShareDBNamespace()
 									}
 								}));
-							});
+							} else {
+								cs = this.createNamespace(channel, channelID);
+								cs.addMember(payload, ws).then(() => {
+									ws.send(JSON.stringify({
+										channel,
+										messageID,
+										cc: 2,
+										payload: {
+											id: cs.getChannelID(),
+											ns: cs.getShareDBNamespace()
+										}
+									}));
+								});
+							}
 						} else if(type === 'channel-available') {
 							const {payload, channel, messageID} = data;
 							this.nobodyThere(channel).then((isEmpty) => {
@@ -122,7 +136,8 @@ export class ChatCodesServer {
 	}
 	private createNamespace(channelName:string, channelID:string=null, topic:string=null):ChatCodesChannelServer {
 		if(this.channels.has(channelName)) {
-			return this.channels.get(channelName);
+			const channelServer = this.channels.get(channelName);
+			return channelServer;
 		} else {
 			let channelServer;
 			if(channelID) { // is archived
@@ -155,7 +170,6 @@ export class ChatCodesServer {
 			channelServer.on('self-destruct', (cs) => {
 				this.destructNamespace(channelServer);
 			});
-
 			return channelServer;
 		}
 	}
@@ -228,9 +242,9 @@ export class ChatCodesServer {
 }
 
 const optionDefinitions = [
-	{ name: 'usemongo', alias: 'm', type: Boolean, defaultValue: true },
+	{ name: 'memdb', alias: 'm', type: Boolean, defaultValue: false },
 	{ name: 'mongocreds', alias: 'c', type: String, defaultValue: path.join(__dirname, '..', 'db_creds.json')},
-	{ name: 'port', alias: 'p', type: Number, defaultValue: 8080 },
+	{ name: 'port', alias: 'p', type: Number, defaultValue: 8000 },
 ];
 const options = commandLineArgs(optionDefinitions);
 
@@ -249,6 +263,6 @@ function getCredentials(filename):Promise<any> {
 }
 
 getCredentials(options['mongocreds']).then((info) => {
-	const mongoDBURL:string = options['usemongo'] ? info['url'] : null;
+	const mongoDBURL:string = options['memdb'] ? null: info['url'];
 	return new ChatCodesServer(options.port, mongoDBURL);
 });

@@ -1,47 +1,28 @@
-var sharedb = require('sharedb/lib/client');
-var $ = require('jquery');
+const topic = url('?topic')
+const wsProtocol = url('protocol') === 'https' ? 'wss' : 'ws';
+const socket = new WebSocket(`${wsProtocol}://${window.location.host}`);
+const connection = new sharedb.Connection(socket);
+const channelsDoc = connection.get('chatcodes', 'channels');
 
-// Open WebSocket connection to ShareDB server
-var socket = new WebSocket('wss://' + window.location.host);
-var connection = new sharedb.Connection(socket);
-var doc = connection.get('chatcodes', 'channels');
-
-var urlVars = getUrlVars();
-var topic = urlVars.topic;
-
-doc.subscribe(showChannels);
-doc.on('op', showChannels);
+channelsDoc.subscribe(showChannels);
+channelsDoc.on('op', showChannels);
 
 function showChannels() {
-    var data = doc.data;
-    var i = 1;
-    $('body').html('');
-    doc.data['channels'].forEach(function(channel) {
-        if(!channel.archived && (!topic || (topic === channel.topic))) {
-            var link = $('<a />');
-            var href = window.location.protocol+'//'+window.location.host+'/'+channel.channelName;
-            link.attr({
-                'href': href,
-                'target': '_blank'
-            });
-            link.text(' ' + channel.channelName + '('+i+') ');
-            $('body').append(link);
-            i++;
-        }
+    const {data} = channelsDoc;
+    const {channels} = data;
+    $('table#channels tbody').children().remove();
+    channels.forEach((channel) => {
+        const {archived, channelID, channelName, created, topic} = channel;
+        const row = $('<tr />');
+        const channelURL = `${url('protocol')}://${url('hostname')}${url('port') === '80' ? '' : ':'+url('port')}/${channelName}`;
+        const observerURL = `${channelURL}/${channelID}`;
+
+        row.append($('<td />').append($('<a />', { text: channelName, href: archived ? observerURL : channelURL, target: '_blank' })));
+        row.append($('<td />').append($('<a />', { text: channelID, href: observerURL, target: '_blank' })));
+        row.append($('<td />', {text: topic}));
+        row.append($('<td />', {text: $.timeago(created)}));
+        row.append($('<td />', {text: archived ?  $.timeago(archived) : '(no)'}));
+
+        $('table#channels tbody').append(row);
     });
-    if(i===1) {
-        $('body').text('(no active converstations on this problem)');
-    }
-    // var createHref = window.location.protocol+'//'+window.location.host+'/'+$.param({ topic: topic, code:code })
-    // var create = $('<a />', {text: 'Create New', target:'_blank', href:createHref}).on('click', function() {
-    //     console.log(topic);
-    // });
-    // $('body').append(create);
-}
-function getUrlVars() {
-    var vars = {};
-    var parts = window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m,key,value) {
-        vars[key] = value;
-    });
-    return vars;
 }

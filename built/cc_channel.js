@@ -165,96 +165,104 @@ class ChatCodesChannelServer extends events_1.EventEmitter {
     getTimestamp() { return (new Date()).getTime(); }
     ;
     addMember(memberInfo, ws) {
+        let preliminaryPromise;
         if (this.isArchive()) {
-            return;
+            preliminaryPromise = Promise.resolve(this);
         }
-        const { username, id } = memberInfo;
-        const member = {
-            id: id,
-            joined: this.getTimestamp(),
-            left: -1,
-            info: {
-                typingStatus: 'IDLE',
-                name: username,
-                colorIndex: this.colorIndex + 1
-            }
-        };
-        this.colorIndex = (this.colorIndex + 1) % ChatCodesChannelServer.NUM_COLORS;
-        this.members.add(member);
-        this.stopSelfDestructTimer();
-        ws.on('message', (str) => {
-            try {
-                const data = JSON.parse(str);
-                const { ns } = data;
-                if (data.cc === 1 && ns === this.getShareDBNamespace()) {
-                    const { type } = data;
-                    if (type === 'editor-event') {
-                        this.emit('editor-event', member);
-                    }
-                    else if (type === 'get-editors-values') {
-                        const { payload, messageID } = data;
-                        const version = payload;
-                        this.getEditorValues(version).then((result) => {
-                            ws.send(JSON.stringify({
-                                messageID,
-                                ns,
-                                cc: 2,
-                                payload: Array.from(result.values())
-                            }));
-                        });
+        else {
+            const { username, id } = memberInfo;
+            const member = {
+                id: id,
+                joined: this.getTimestamp(),
+                left: -1,
+                info: {
+                    typingStatus: 'IDLE',
+                    name: username,
+                    colorIndex: this.colorIndex + 1
+                }
+            };
+            this.colorIndex = (this.colorIndex + 1) % ChatCodesChannelServer.NUM_COLORS;
+            this.members.add(member);
+            this.stopSelfDestructTimer();
+            ws.on('message', (str) => {
+                try {
+                    const data = JSON.parse(str);
+                    const { ns } = data;
+                    if (data.cc === 1 && ns === this.getShareDBNamespace()) {
+                        const { type } = data;
+                        if (type === 'editor-event') {
+                            this.emit('editor-event', member);
+                        }
+                        else if (type === 'get-editors-values') {
+                            const { payload, messageID } = data;
+                            const version = payload;
+                            this.getEditorValues(version).then((result) => {
+                                ws.send(JSON.stringify({
+                                    messageID,
+                                    ns,
+                                    cc: 2,
+                                    payload: Array.from(result.values())
+                                }));
+                            });
+                        }
                     }
                 }
-            }
-            catch (e) {
-                console.error(e);
-            }
-        });
-        ws.on('close', () => {
-            const timestamp = this.getTimestamp();
-            Promise.all([this.chatPromise]).then(([chatDoc]) => {
-                const userLeft = {
-                    uid: id,
-                    type: 'left',
-                    timestamp: timestamp
-                };
-                return this.submitOp(chatDoc, [{ p: ['messages', chatDoc.data.messages.length], li: userLeft }]);
-            }).then((chatDoc) => {
-                member.left = this.getTimestamp();
-                return this.submitOp(chatDoc, [{ p: ['activeUsers', id], od: member }]);
-            }).then(() => {
-                return this.fetchDocFromPromise(this.cursorsPromise);
-            }).then((cursorsDoc) => {
-                const removeCursorsPromises = _.chain(cursorsDoc.data)
-                    .map((ed, i) => {
-                    const ucd = ed['userCursors'][id];
-                    const usd = ed['userSelections'][id];
-                    return Promise.all([this.submitOp(cursorsDoc, [{ p: [i, 'userCursors', id], od: ucd }]), this.submitOp(cursorsDoc, [{ p: [i, 'userSelections', id], od: ucd }])]);
-                })
-                    .flatten(true)
-                    .value();
-                return Promise.all(removeCursorsPromises);
-            }).then(() => {
-                this.members.delete(member);
-                if (this.isEmpty()) {
-                    this.startSelfDestructTimer();
+                catch (e) {
+                    console.error(e);
                 }
             });
-            Logger.info(`Client (${id} in ${this.getChannelName()}) disconnected`);
-        });
-        Logger.info(`Client (${id}:${username} in ${this.getChannelName()}) joined`);
-        return Promise.all([this.chatPromise]).then((result) => {
-            const chatDoc = result[0];
-            return this.submitOp(chatDoc, [{ p: ['activeUsers', id], oi: member }]);
-        }).then((chatDoc) => {
-            return this.submitOp(chatDoc, [{ p: ['allUsers', id], oi: member }]);
-        }).then((chatDoc) => {
-            const userJoin = {
-                uid: id,
-                type: 'join',
-                timestamp: this.getTimestamp()
-            };
-            return this.submitOp(chatDoc, [{ p: ['messages', chatDoc.data['messages']['length']], li: userJoin }]);
-        }).catch((err) => {
+            ws.on('close', () => {
+                const timestamp = this.getTimestamp();
+                Promise.all([this.chatPromise]).then(([chatDoc]) => {
+                    const userLeft = {
+                        uid: id,
+                        type: 'left',
+                        timestamp: timestamp
+                    };
+                    return this.submitOp(chatDoc, [{ p: ['messages', chatDoc.data.messages.length], li: userLeft }]);
+                }).then((chatDoc) => {
+                    member.left = this.getTimestamp();
+                    return this.submitOp(chatDoc, [{ p: ['activeUsers', id], od: member }]);
+                }).then(() => {
+                    return this.fetchDocFromPromise(this.cursorsPromise);
+                }).then((cursorsDoc) => {
+                    const removeCursorsPromises = _.chain(cursorsDoc.data)
+                        .map((ed, i) => {
+                        const ucd = ed['userCursors'][id];
+                        const usd = ed['userSelections'][id];
+                        return Promise.all([this.submitOp(cursorsDoc, [{ p: [i, 'userCursors', id], od: ucd }]), this.submitOp(cursorsDoc, [{ p: [i, 'userSelections', id], od: ucd }])]);
+                    })
+                        .flatten(true)
+                        .value();
+                    return Promise.all(removeCursorsPromises);
+                }).then(() => {
+                    this.members.delete(member);
+                    if (this.isEmpty()) {
+                        this.startSelfDestructTimer();
+                    }
+                });
+                Logger.info(`Client (${id} in ${this.getChannelName()}) disconnected`);
+            });
+            Logger.info(`Client (${id}:${username} in ${this.getChannelName()}) joined`);
+            preliminaryPromise = Promise.all([this.chatPromise]).then((result) => {
+                const chatDoc = result[0];
+                return this.submitOp(chatDoc, [{ p: ['activeUsers', id], oi: member }]);
+            }).then((chatDoc) => {
+                return this.submitOp(chatDoc, [{ p: ['allUsers', id], oi: member }]);
+            }).then((chatDoc) => {
+                const userJoin = {
+                    uid: id,
+                    type: 'join',
+                    timestamp: this.getTimestamp()
+                };
+                return this.submitOp(chatDoc, [{ p: ['messages', chatDoc.data['messages']['length']], li: userJoin }]);
+            });
+        }
+        return preliminaryPromise.then(() => {
+            return Promise.all([this.chatPromise, this.editorsPromise, this.cursorsPromise]);
+        }).then(() => {
+            return this;
+        }, (err) => {
             console.error(err);
         });
     }
