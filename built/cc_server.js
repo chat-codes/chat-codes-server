@@ -1,13 +1,10 @@
 "use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-// import * as sio from 'socket.io';
 const _ = require("underscore");
 const commandLineArgs = require("command-line-args");
 const fs = require("fs");
 const path = require("path");
 const ShareDB = require("sharedb");
-const ShareDBMongo = require("sharedb-mongo");
-const ShareDBMingo = require("sharedb-mingo-memory");
+const ShareDBPostgres = require("sharedb-postgres");
 const express = require("express");
 const http = require("http");
 const WebSocket = require("ws");
@@ -65,10 +62,10 @@ class ChatCodesServer {
     }
     setupShareDB() {
         if (this.shareDBURL) {
-            this.db = ShareDBMongo(this.shareDBURL);
+            this.db = ShareDBPostgres(this.shareDBURL);
         }
         else {
-            this.db = new ShareDBMingo();
+            this.db = new ShareDB.MemoryDB();
         }
         this.sharedb = new ShareDB({ db: this.db });
         this.wss.on('connection', (ws, req) => {
@@ -245,7 +242,7 @@ class ChatCodesServer {
 exports.ChatCodesServer = ChatCodesServer;
 const optionDefinitions = [
     { name: 'memdb', alias: 'm', type: Boolean, defaultValue: false },
-    { name: 'mongocreds', alias: 'c', type: String, defaultValue: path.join(__dirname, '..', 'db_creds.json') },
+    { name: 'postgrescreds', alias: 'c', type: String, defaultValue: path.join(__dirname, '..', 'db_creds.json') },
     { name: 'port', alias: 'p', type: Number, defaultValue: 8080 },
 ];
 const options = commandLineArgs(optionDefinitions);
@@ -264,8 +261,8 @@ function getCredentials(filename) {
         return JSON.parse(contents);
     });
 }
-getCredentials(options['mongocreds']).then((info) => {
-    const mongoDBURL = options['memdb'] ? null : info['url'];
-    return new ChatCodesServer(options.port, mongoDBURL);
+getCredentials(options['postgrescreds']).then((info) => {
+    const postgresDBURL = options['memdb'] ? null : info['url'];
+    return new ChatCodesServer(options.port, postgresDBURL);
 });
 //# sourceMappingURL=cc_server.js.map

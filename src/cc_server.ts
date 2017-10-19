@@ -1,11 +1,9 @@
-// import * as sio from 'socket.io';
 import * as _ from 'underscore';
 import * as commandLineArgs from 'command-line-args';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as ShareDB from 'sharedb';
-import * as ShareDBMongo from 'sharedb-mongo';
-import * as ShareDBMingo from 'sharedb-mingo-memory';
+import * as ShareDBPostgres from 'sharedb-postgres';
 import * as express from 'express';
 import * as http from 'http';
 import * as WebSocket from 'ws';
@@ -67,9 +65,9 @@ export class ChatCodesServer {
 	}
 	private setupShareDB() {
 		if(this.shareDBURL) {
-			this.db = ShareDBMongo(this.shareDBURL);
+			this.db = ShareDBPostgres(this.shareDBURL);
 		} else {
-			this.db = new ShareDBMingo();
+			this.db = new ShareDB.MemoryDB();
 		}
 		this.sharedb = new ShareDB({ db: this.db });
 
@@ -243,7 +241,7 @@ export class ChatCodesServer {
 
 const optionDefinitions = [
 	{ name: 'memdb', alias: 'm', type: Boolean, defaultValue: false },
-	{ name: 'mongocreds', alias: 'c', type: String, defaultValue: path.join(__dirname, '..', 'db_creds.json')},
+	{ name: 'postgrescreds', alias: 'c', type: String, defaultValue: path.join(__dirname, '..', 'db_creds.json')},
 	{ name: 'port', alias: 'p', type: Number, defaultValue: 8080 },
 ];
 const options = commandLineArgs(optionDefinitions);
@@ -262,7 +260,7 @@ function getCredentials(filename):Promise<any> {
 	});
 }
 
-getCredentials(options['mongocreds']).then((info) => {
-	const mongoDBURL:string = options['memdb'] ? null: info['url'];
-	return new ChatCodesServer(options.port, mongoDBURL);
+getCredentials(options['postgrescreds']).then((info) => {
+	const postgresDBURL:string = options['memdb'] ? null: info['url'];
+	return new ChatCodesServer(options.port, postgresDBURL);
 });

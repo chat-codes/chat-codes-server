@@ -1,5 +1,4 @@
 "use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
 const Logger = require("js-logger");
 const _ = require("underscore");
 const events_1 = require("events");
@@ -304,7 +303,6 @@ class ChatCodesChannelServer extends events_1.EventEmitter {
         return this.getEditorOps(0, version).then((ops) => {
             _.each(ops, (op, i) => {
                 if (op['create']) {
-                    // content = _.clone(op['data']);
                 }
                 else {
                     content = jsonType.apply(content, op.op);
