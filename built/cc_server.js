@@ -7,7 +7,6 @@ const fs = require("fs");
 const path = require("path");
 const ShareDB = require("sharedb");
 const ShareDBMongo = require("sharedb-mongo");
-const ShareDBMingo = require("sharedb-mingo-memory");
 const express = require("express");
 const http = require("http");
 const WebSocket = require("ws");
@@ -68,7 +67,7 @@ class ChatCodesServer {
             this.db = ShareDBMongo(this.shareDBURL);
         }
         else {
-            this.db = new ShareDBMingo();
+            this.db = new ShareDB.MemoryDB();
         }
         this.sharedb = new ShareDB({ db: this.db });
         this.wss.on('connection', (ws, req) => {

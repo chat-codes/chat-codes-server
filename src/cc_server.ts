@@ -69,7 +69,7 @@ export class ChatCodesServer {
 		if(this.shareDBURL) {
 			this.db = ShareDBMongo(this.shareDBURL);
 		} else {
-			this.db = new ShareDBMingo();
+			this.db = new ShareDB.MemoryDB();
 		}
 		this.sharedb = new ShareDB({ db: this.db });
 
@@ -86,7 +86,7 @@ export class ChatCodesServer {
 							const channel:string = payload['channel'];
 							const channelID:string = payload['channelID'];
 							let cs:ChatCodesChannelServer;
-							if( channelID && this.channels.has(channel)  && this.channels.get(channel).getChannelID() === channelID) {
+							if(channelID && this.channels.has(channel)  && this.channels.get(channel).getChannelID() === channelID) {
 								cs = this.channels.get(channel);
 								ws.send(JSON.stringify({
 									channel,
