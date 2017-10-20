@@ -1,6 +1,5 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-// import * as sio from 'socket.io';
 const _ = require("underscore");
 const commandLineArgs = require("command-line-args");
 const fs = require("fs");

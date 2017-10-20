@@ -1,4 +1,3 @@
-// import * as sio from 'socket.io';
 import * as _ from 'underscore';
 import * as commandLineArgs from 'command-line-args';
 import * as fs from 'fs';
