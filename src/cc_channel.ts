@@ -159,6 +159,25 @@ export class ChatCodesChannelServer extends EventEmitter {
 			return this.submitOp(editorDoc, {p, li});
 		});
 	}
+	private stringify():Promise<string> {
+		return Promise.all([this.chatPromise, this.editorsPromise]).then((result) => {
+			const chatDoc:ShareDB.Doc = result[0];
+			const editorsDoc:ShareDB.Doc = result[1];
+
+			return Promise.all([ chatDoc, editorsDoc, this.getEditorOps(0, editorsDoc.version) ]);
+		}).then((result) => {
+			const chatDoc:ShareDB.Doc = result[0];
+			const editorsDoc:ShareDB.Doc = result[1];
+			const editorOps:Array<any> = result[2];
+
+			const data = {
+				chat: chatDoc.data,
+				editors: editorsDoc.data,
+				ops: editorOps.data
+			};
+			return JSON.stringify(data);
+		});
+	}
 
 	private getTimestamp():number { return (new Date()).getTime(); };
 	public addMember(memberInfo:any, ws:WebSocket):Promise<any> {
