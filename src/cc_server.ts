@@ -150,8 +150,8 @@ export class ChatCodesServer {
 					channelID: channelServer.getChannelID(),
 					created: (new Date()).getTime(),
 					topic: topic,
-					archived: false,
-					data: false
+					archived: false
+					// data: false
 				});
 			}
 
