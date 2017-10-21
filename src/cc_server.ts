@@ -216,13 +216,13 @@ export class ChatCodesServer {
 			const oi = (new Date()).getTime();
 			const p = ['channels', index, 'archived'];
 			return this.submitChannelsOp({ p, oi, od });
-		}).then((doc) => {
-			return channelServer.stringify();
-		}).then((stringifiedChannel:string) => {
-			const od = channelDoc.data['channels'][index]['data'];
-			const oi = stringifiedChannel;
-			const p = ['channels', index, 'data'];
-			return this.submitChannelsOp({ p, oi, od });
+		// }).then((doc) => {
+		// 	return channelServer.stringify();
+		// }).then((stringifiedChannel:string) => {
+		// 	const od = channelDoc.data['channels'][index]['data'];
+		// 	const oi = stringifiedChannel;
+		// 	const p = ['channels', index, 'data'];
+		// 	return this.submitChannelsOp({ p, oi, od });
 		}).then((doc) => {
 			return channelServer.destroy();
 		}).then(() => {
