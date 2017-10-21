@@ -499,7 +499,6 @@ brand
 discount
 higher
 effects
-created
 remember
 yellow
 increase
@@ -1701,7 +1700,6 @@ sister
 walking
 explain
 smaller
-newest
 happened
 extent
 sharp
@@ -1946,7 +1944,6 @@ saving
 empire
 resume
 twenty
-newly
 raise
 prepare
 avatar
@@ -2482,7 +2479,6 @@ rolling
 memories
 nelson
 arrived
-creates
 faces
 tourist
 mayor
@@ -3333,7 +3329,6 @@ retailer
 vitamins
 elegant
 gains
-renewal
 opposed
 deemed
 scoring
@@ -3465,7 +3460,6 @@ finest
 realty
 janet
 apparent
-phpbb
 autumn
 probe
 toilet
@@ -3491,7 +3485,6 @@ villas
 ebook
 exclude
 brooks
-newton
 anxiety
 bingo
 whilst
@@ -3549,7 +3542,6 @@ venues
 blast
 wellness
 calcium
-newport
 indians
 shield
 harvest
@@ -4285,7 +4277,6 @@ twist
 itunes
 stomach
 buried
-newbie
 minimize
 darwin
 ranks
@@ -4320,7 +4311,6 @@ andale
 fabulous
 remix
 alias
-newer
 spice
 implies
 cooler
@@ -4562,7 +4552,6 @@ planets
 deficit
 boulder
 pointing
-renew
 coupled
 myanmar
 metadata
@@ -5229,7 +5218,6 @@ modems
 harmful
 prozac
 dividend
-newark
 glucose
 phantom
 playback
@@ -5376,7 +5364,6 @@ cologne
 wishing
 ranger
 smallest
-newman
 marsh
 ricky
 scared

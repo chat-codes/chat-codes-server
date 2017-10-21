@@ -15,7 +15,7 @@ export class ChatCodesChannelServer extends EventEmitter {
 	private editorsPromise:Promise<ShareDB.Doc> = this.getShareDBEditors();
 	private cursorsPromise:Promise<ShareDB.Doc> = this.getShareDBCursors();
 	private selfDestructTimeout = null;
-	private selfDestructDelay:number = 0.0 * 60 * 60 * 1000; // 0.2 hours
+	private selfDestructDelay:number = 0.0 * 60 * 60 * 1000; // 0.1 hours
 	constructor(private sharedb, private wss, private channelName:string, private channelID:string=s4Times(4), private archived:boolean=false) {
 		super();
 		if(!this.isArchive()) {
@@ -362,12 +362,10 @@ export class ChatCodesChannelServer extends EventEmitter {
 	}
 	public destroy():Promise<boolean> {
 		return Promise.all([
-			this.deleteDocPromise(this.chatPromise),
-			this.deleteDocPromise(this.editorsPromise),
 			this.deleteDocPromise(this.cursorsPromise)
-		]).then((result) => {
+		]).then(() => {
 			return true;
-		});
+		})
 	}
 }
 function s4Times(n:number):string {

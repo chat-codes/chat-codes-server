@@ -19,36 +19,20 @@ class ChatCodesServer {
         this.shareDBURL = shareDBURL;
         this.app = express();
         this.channels = new Map();
-        this.app.use('/channels', (req, res, next) => {
-            next();
-        }, express.static(path.join(__dirname, '..', 'channel_pages')));
-        this.app.use('/:channelName', (req, res, next) => {
-            const channelName = req.params.channelName;
-            if (channelName === 'favicon.ico') {
-                return;
-            }
-            this.isValidChannelName(channelName).then((valid) => {
-                if (valid) {
-                    next();
-                }
-                else {
-                    res.redirect('/');
-                }
-            });
-        }, express.static(path.join(__dirname, '..', 'cc_web')));
-        this.app.use('/:channelName/:convo', (req, res, next) => {
-            next();
-        }, express.static(path.join(__dirname, '..', 'cc_web')));
-        this.app.use('/', (req, res, next) => {
-            const code = req.query.code;
-            const topic = req.query.topic;
+        /*
+        Routes:
+        chat.codes/{valid_channel_name} -> redirect to cc_web
+         */
+        this.app.use('/channels', express.static(path.join(__dirname, '..', 'channel_pages')));
+        this.app.use('/new', (req, res, next) => {
+            const { lang, code, topic } = req.query;
             let channelName;
             this.createChannelName().then((ch) => {
                 channelName = ch;
                 return this.createNamespace(channelName, null, topic || null);
             }).then((ns) => {
                 if (code) {
-                    return ns.addCodeFile(code || '', 'code', 'Python');
+                    return ns.addCodeFile(code || '', 'code', lang || '');
                 }
                 else {
                     return false;
@@ -57,6 +41,27 @@ class ChatCodesServer {
                 res.redirect(`/${channelName}`);
             });
         });
+        this.app.use([
+            '/:channelName([a-zA-Z]+)/:convo([a-zA-Z0-9]+)',
+            '/:channelName([a-zA-Z]+)'
+        ], (req, res, next) => {
+            const channelName = req.params.channelName;
+            const convo = req.params.convo;
+            if (req.path === '/') {
+                this.isValidChannelName(channelName).then((valid) => {
+                    if (valid) {
+                        next();
+                    }
+                    else {
+                        res.redirect('/new');
+                    }
+                });
+            }
+            else {
+                next();
+            }
+        }, express.static(path.join(__dirname, '..', 'cc_web')), express.static(path.join(__dirname, '..', 'cc_web', 'node_modules', 'ace-builds', 'src-min')));
+        this.app.use('/', express.static(path.join(__dirname, '..', 'homepage')));
         this.server = http.createServer(this.app);
         this.wss = new WebSocket.Server({ server: this.server });
         this.setupShareDB();
@@ -144,13 +149,14 @@ class ChatCodesServer {
             else {
                 channelServer = new cc_channel_1.ChatCodesChannelServer(this.sharedb, this.wss, channelName);
                 this.channels.set(channelName, channelServer);
+                Logger.debug(`Created channel ${channelServer.getChannelName()} (${channelServer.getChannelID()})`);
                 this.pushChannel({
                     channelName: channelName,
                     channelID: channelServer.getChannelID(),
                     created: (new Date()).getTime(),
                     topic: topic,
                     archived: false
-                    // data: false
+                    // ,data: false
                 });
             }
             channelServer.on('self-destruct', (cs) => {
@@ -211,13 +217,13 @@ class ChatCodesServer {
             const p = ['channels', index, 'archived'];
             return this.submitChannelsOp({ p, oi, od });
         }).then((doc) => {
-            // 	return channelServer.stringify();
-            // }).then((stringifiedChannel:string) => {
-            // 	const od = channelDoc.data['channels'][index]['data'];
-            // 	const oi = stringifiedChannel;
-            // 	const p = ['channels', index, 'data'];
-            // 	return this.submitChannelsOp({ p, oi, od });
-            // }).then((doc) => {
+            return channelServer.stringify();
+        }).then((stringifiedChannel) => {
+            const od = channelDoc.data['channels'][index]['data'];
+            const oi = stringifiedChannel;
+            const p = ['channels', index, 'data'];
+            return this.submitChannelsOp({ p, oi, od });
+        }).then((doc) => {
             return channelServer.destroy();
         }).then(() => {
             Logger.info(`Channel ${channelServer.getChannelName()} (${channelServer.getChannelID()}) was destroyed`);

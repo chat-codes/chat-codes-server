@@ -23,36 +23,20 @@ export class ChatCodesServer {
 	private channels:Map<string, ChatCodesChannelServer> = new Map();
 	private channelsDoc:Promise<ShareDB.Doc>;
 	constructor(private shareDBPort:number, private shareDBURL:string) {
-		this.app.use('/channels', (req, res, next) => {
-			next();
-		}, express.static(path.join(__dirname, '..', 'channel_pages')));
-		this.app.use('/:channelName', (req, res, next) => {
-			const channelName:string = req.params.channelName;
-			if(channelName==='favicon.ico') {
-				return;
-			}
-			this.isValidChannelName(channelName).then((valid) => {
-				if(valid) {
-					next();
-				} else {
-					res.redirect('/');
-				}
-			});
-		}, express.static(path.join(__dirname, '..', 'cc_web')));
-		this.app.use('/:channelName/:convo', (req, res, next) => {
-			next();
-		}, express.static(path.join(__dirname, '..', 'cc_web')));
-
-		this.app.use('/', (req, res, next) => {
-			const code = req.query.code;
-			const topic = req.query.topic;
+		/*
+		Routes:
+		chat.codes/{valid_channel_name} -> redirect to cc_web
+		 */
+		this.app.use('/channels', express.static(path.join(__dirname, '..', 'channel_pages')));
+		this.app.use('/new', (req, res, next) => {
+			const {lang, code, topic} = req.query;
 			let channelName:string;
 			this.createChannelName().then((ch:string) => {
 				channelName = ch;
 				return this.createNamespace(channelName, null, topic||null);
 			}).then((ns) => {
 				if(code) {
-					return ns.addCodeFile(code||'', 'code', 'Python');
+					return ns.addCodeFile(code||'', 'code', lang||'');
 				} else {
 					return false;
 				}
@@ -60,6 +44,28 @@ export class ChatCodesServer {
 				res.redirect(`/${channelName}`);
 			});
 		});
+		this.app.use([
+			'/:channelName([a-zA-Z]+)/:convo([a-zA-Z0-9]+)',
+			'/:channelName([a-zA-Z]+)'
+		], (req, res, next) => {
+			const channelName:string = req.params.channelName;
+			const convo:string = req.params.convo;
+			if(req.path === '/') {
+				this.isValidChannelName(channelName).then((valid) => {
+					if(valid) {
+						next();
+					} else {
+						res.redirect('/new');
+					}
+				});
+			} else {
+				next();
+			}
+		}, express.static(path.join(__dirname, '..', 'cc_web')),
+			express.static(path.join(__dirname, '..', 'cc_web', 'node_modules', 'ace-builds', 'src-min')));
+		this.app.use('/', express.static(path.join(__dirname, '..', 'homepage')));
+
+
 		this.server = http.createServer(this.app);
 		this.wss = new WebSocket.Server( { server: this.server });
 		this.setupShareDB();
@@ -144,6 +150,7 @@ export class ChatCodesServer {
 			} else {
 				channelServer = new ChatCodesChannelServer(this.sharedb, this.wss, channelName);
 				this.channels.set(channelName, channelServer);
+				Logger.debug(`Created channel ${channelServer.getChannelName()} (${channelServer.getChannelID()})`);
 
 				this.pushChannel({
 					channelName: channelName,
@@ -151,7 +158,7 @@ export class ChatCodesServer {
 					created: (new Date()).getTime(),
 					topic: topic,
 					archived: false
-					// data: false
+					// ,data: false
 				});
 			}
 
@@ -210,13 +217,13 @@ export class ChatCodesServer {
 			const p = ['channels', index, 'archived'];
 			return this.submitChannelsOp({ p, oi, od });
 		}).then((doc) => {
-		// 	return channelServer.stringify();
-		// }).then((stringifiedChannel:string) => {
-		// 	const od = channelDoc.data['channels'][index]['data'];
-		// 	const oi = stringifiedChannel;
-		// 	const p = ['channels', index, 'data'];
-		// 	return this.submitChannelsOp({ p, oi, od });
-		// }).then((doc) => {
+			return channelServer.stringify();
+		}).then((stringifiedChannel:string) => {
+			const od = channelDoc.data['channels'][index]['data'];
+			const oi = stringifiedChannel;
+			const p = ['channels', index, 'data'];
+			return this.submitChannelsOp({ p, oi, od });
+		}).then((doc) => {
 			return channelServer.destroy();
 		}).then(() => {
 			Logger.info(`Channel ${channelServer.getChannelName()} (${channelServer.getChannelID()}) was destroyed`);

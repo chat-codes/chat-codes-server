@@ -19,7 +19,7 @@ class ChatCodesChannelServer extends events_1.EventEmitter {
         this.editorsPromise = this.getShareDBEditors();
         this.cursorsPromise = this.getShareDBCursors();
         this.selfDestructTimeout = null;
-        this.selfDestructDelay = 0.0 * 60 * 60 * 1000; // 0.2 hours
+        this.selfDestructDelay = 0.0 * 60 * 60 * 1000; // 0.1 hours
         this.colorIndex = 0;
         if (!this.isArchive()) {
             this.addEditorListeners();
@@ -382,10 +382,8 @@ class ChatCodesChannelServer extends events_1.EventEmitter {
     }
     destroy() {
         return Promise.all([
-            this.deleteDocPromise(this.chatPromise),
-            this.deleteDocPromise(this.editorsPromise),
             this.deleteDocPromise(this.cursorsPromise)
-        ]).then((result) => {
+        ]).then(() => {
             return true;
         });
     }
