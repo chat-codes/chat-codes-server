@@ -144,23 +144,13 @@ class ChatCodesServer {
             else {
                 channelServer = new cc_channel_1.ChatCodesChannelServer(this.sharedb, this.wss, channelName);
                 this.channels.set(channelName, channelServer);
-                this.channelsDoc.then((doc) => {
-                    const li = {
-                        channelName: channelName,
-                        channelID: channelServer.getChannelID(),
-                        created: (new Date()).getTime(),
-                        topic: topic,
-                        archived: false
-                    };
-                    const index = doc.data['channels'].length;
-                    const p = ['channels', index];
-                    doc.submitOp({ p, li });
-                    channelServer.on('self-destruct', (cs) => {
-                        const od = doc.data['channels'][index]['archived'];
-                        const oi = (new Date()).getTime();
-                        const p = ['channels', index, 'archived'];
-                        doc.submitOp({ p, oi, od });
-                    });
+                this.pushChannel({
+                    channelName: channelName,
+                    channelID: channelServer.getChannelID(),
+                    created: (new Date()).getTime(),
+                    topic: topic,
+                    archived: false,
+                    data: false
                 });
             }
             channelServer.on('self-destruct', (cs) => {
@@ -169,12 +159,69 @@ class ChatCodesServer {
             return channelServer;
         }
     }
+    pushChannel(li) {
+        return this.channelsDoc.then((doc) => {
+            const index = doc.data['channels'].length;
+            const p = ['channels', doc.data['channels'].length];
+            return this.submitChannelsOp({ p, li });
+        });
+    }
+    submitOp(doc, data, options) {
+        return new Promise((resolve, reject) => {
+            doc.submitOp(data, options, (err) => {
+                if (err) {
+                    reject(err);
+                }
+                else {
+                    resolve(doc);
+                }
+            });
+        });
+    }
+    submitChannelsOp(data, options) {
+        return this.channelsDoc.then((doc) => {
+            return this.submitOp(doc, data, options);
+        });
+    }
+    getChannelIndex(channelID) {
+        return this.channelsDoc.then((doc) => {
+            const channels = doc.data['channels'];
+            for (let i = 0; i < channels.length; i++) {
+                if (channels[i].channelID === channelID) {
+                    return i;
+                }
+            }
+            return -1;
+        });
+    }
     destructNamespace(channelServer) {
         if (!channelServer.isArchive()) {
             const channelName = channelServer.getChannelName();
             this.channels.delete(channelName);
         }
-        channelServer.destroy();
+        let index;
+        let channelDoc;
+        this.getChannelIndex(channelServer.getChannelID()).then((channelIndex) => {
+            index = channelIndex;
+            return this.channelsDoc;
+        }).then((doc) => {
+            channelDoc = doc;
+            const od = channelDoc.data['channels'][index]['archived'];
+            const oi = (new Date()).getTime();
+            const p = ['channels', index, 'archived'];
+            return this.submitChannelsOp({ p, oi, od });
+        }).then((doc) => {
+            // 	return channelServer.stringify();
+            // }).then((stringifiedChannel:string) => {
+            // 	const od = channelDoc.data['channels'][index]['data'];
+            // 	const oi = stringifiedChannel;
+            // 	const p = ['channels', index, 'data'];
+            // 	return this.submitChannelsOp({ p, oi, od });
+            // }).then((doc) => {
+            return channelServer.destroy();
+        }).then(() => {
+            Logger.info(`Channel ${channelServer.getChannelName()} (${channelServer.getChannelID()}) was destroyed`);
+        });
     }
     nobodyThere(channelName) {
         return new Promise((resolve, reject) => {

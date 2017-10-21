@@ -15,7 +15,7 @@ export class ChatCodesChannelServer extends EventEmitter {
 	private editorsPromise:Promise<ShareDB.Doc> = this.getShareDBEditors();
 	private cursorsPromise:Promise<ShareDB.Doc> = this.getShareDBCursors();
 	private selfDestructTimeout = null;
-	private selfDestructDelay:number = 0.2 * 60 * 60 * 1000; // 0.2 hours
+	private selfDestructDelay:number = 0.0 * 60 * 60 * 1000; // 0.2 hours
 	constructor(private sharedb, private wss, private channelName:string, private channelID:string=s4Times(4), private archived:boolean=false) {
 		super();
 		if(!this.isArchive()) {
@@ -130,7 +130,7 @@ export class ChatCodesChannelServer extends EventEmitter {
 			});
 		});
 	}
-	private submitOp(doc, data, options?):Promise<ShareDB.Doc> {
+	private submitOp(doc:ShareDB.Doc, data, options?):Promise<ShareDB.Doc> {
 		return new Promise<ShareDB.Doc>((resolve, reject) => {
 			doc.submitOp(data, options, (err) => {
 				if(err) { reject(err); }
@@ -159,7 +159,7 @@ export class ChatCodesChannelServer extends EventEmitter {
 			return this.submitOp(editorDoc, {p, li});
 		});
 	}
-	private stringify():Promise<string> {
+	public stringify():Promise<string> {
 		return Promise.all([this.chatPromise, this.editorsPromise]).then((result) => {
 			const chatDoc:ShareDB.Doc = result[0];
 			const editorsDoc:ShareDB.Doc = result[1];
@@ -171,9 +171,9 @@ export class ChatCodesChannelServer extends EventEmitter {
 			const editorOps:Array<any> = result[2];
 
 			const data = {
-				chat: chatDoc.data,
-				editors: editorsDoc.data,
-				ops: editorOps.data
+				chatDoc: chatDoc.data,
+				editorsDoc: editorsDoc.data,
+				editorOps: editorOps
 			};
 			return JSON.stringify(data);
 		});
@@ -287,7 +287,7 @@ export class ChatCodesChannelServer extends EventEmitter {
 	private getShareDBObject(docName:string, type:string, defaultContents:any):Promise<ShareDB.Doc> {
 		return new Promise((resolve, reject) => {
 			const connection = this.sharedb.connect();
-			const doc = connection.get(this.getShareDBNamespace(), docName);
+			const doc = connection.get('chatcodes', `${this.getShareDBNamespace()}-${docName}`);
 			doc.fetch((err) => {
 				if(err) {
 					reject(err);
@@ -349,8 +349,25 @@ export class ChatCodesChannelServer extends EventEmitter {
 	private isEmpty():boolean {
 		return this.members.size === 0;
 	}
-	public destroy() {
-		Logger.info(`Channel ${this.getChannelName()} (${this.getChannelID()}) was destroyed`);
+	private deleteDoc(doc:ShareDB.Doc, options?) {
+		return new Promise<boolean>((resolve, reject) => {
+			doc.del(options, (err) => {
+				if(err) { reject(err); }
+				else { resolve(true); }
+			});
+		});
+	}
+	private deleteDocPromise(docPromise:Promise<ShareDB.Doc>):Promise<boolean> {
+		return docPromise.then(this.deleteDoc);
+	}
+	public destroy():Promise<boolean> {
+		return Promise.all([
+			this.deleteDocPromise(this.chatPromise),
+			this.deleteDocPromise(this.editorsPromise),
+			this.deleteDocPromise(this.cursorsPromise)
+		]).then((result) => {
+			return true;
+		});
 	}
 }
 function s4Times(n:number):string {

@@ -19,7 +19,7 @@ class ChatCodesChannelServer extends events_1.EventEmitter {
         this.editorsPromise = this.getShareDBEditors();
         this.cursorsPromise = this.getShareDBCursors();
         this.selfDestructTimeout = null;
-        this.selfDestructDelay = 0.2 * 60 * 60 * 1000; // 0.2 hours
+        this.selfDestructDelay = 0.0 * 60 * 60 * 1000; // 0.2 hours
         this.colorIndex = 0;
         if (!this.isArchive()) {
             this.addEditorListeners();
@@ -162,6 +162,23 @@ class ChatCodesChannelServer extends events_1.EventEmitter {
             return this.submitOp(editorDoc, { p, li });
         });
     }
+    stringify() {
+        return Promise.all([this.chatPromise, this.editorsPromise]).then((result) => {
+            const chatDoc = result[0];
+            const editorsDoc = result[1];
+            return Promise.all([chatDoc, editorsDoc, this.getEditorOps(0, editorsDoc.version)]);
+        }).then((result) => {
+            const chatDoc = result[0];
+            const editorsDoc = result[1];
+            const editorOps = result[2];
+            const data = {
+                chatDoc: chatDoc.data,
+                editorsDoc: editorsDoc.data,
+                editorOps: editorOps
+            };
+            return JSON.stringify(data);
+        });
+    }
     getTimestamp() { return (new Date()).getTime(); }
     ;
     addMember(memberInfo, ws) {
@@ -274,7 +291,7 @@ class ChatCodesChannelServer extends events_1.EventEmitter {
     getShareDBObject(docName, type, defaultContents) {
         return new Promise((resolve, reject) => {
             const connection = this.sharedb.connect();
-            const doc = connection.get(this.getShareDBNamespace(), docName);
+            const doc = connection.get('chatcodes', `${this.getShareDBNamespace()}-${docName}`);
             doc.fetch((err) => {
                 if (err) {
                     reject(err);
@@ -348,8 +365,29 @@ class ChatCodesChannelServer extends events_1.EventEmitter {
     isEmpty() {
         return this.members.size === 0;
     }
+    deleteDoc(doc, options) {
+        return new Promise((resolve, reject) => {
+            doc.del(options, (err) => {
+                if (err) {
+                    reject(err);
+                }
+                else {
+                    resolve(true);
+                }
+            });
+        });
+    }
+    deleteDocPromise(docPromise) {
+        return docPromise.then(this.deleteDoc);
+    }
     destroy() {
-        Logger.info(`Channel ${this.getChannelName()} (${this.getChannelID()}) was destroyed`);
+        return Promise.all([
+            this.deleteDocPromise(this.chatPromise),
+            this.deleteDocPromise(this.editorsPromise),
+            this.deleteDocPromise(this.cursorsPromise)
+        ]).then((result) => {
+            return true;
+        });
     }
 }
 ChatCodesChannelServer.NUM_COLORS = 4;
