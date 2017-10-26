@@ -4,7 +4,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as ShareDB from 'sharedb';
 import * as ShareDBMongo from 'sharedb-mongo';
-import * as ShareDBMingo from 'sharedb-mingo-memory';
 import * as express from 'express';
 import * as http from 'http';
 import * as WebSocket from 'ws';
@@ -75,6 +74,7 @@ export class ChatCodesServer {
 			this.db = ShareDBMongo(this.shareDBURL);
 		} else {
 			this.db = new ShareDB.MemoryDB();
+			// this.db = new ShareDBMingo();
 		}
 		this.sharedb = new ShareDB({ db: this.db });
 

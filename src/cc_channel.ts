@@ -326,7 +326,7 @@ export class ChatCodesChannelServer extends EventEmitter {
 	}
 	private getEditorOps(fromVersion:number, toVersion:number, opts={}):Promise<Array<any>> {
 		return new Promise<Array<any>>((resolve, reject) => {
-			this.sharedb.db.getOps(this.getShareDBNamespace(), 'editors', fromVersion, toVersion, opts, (err, data) => {
+			this.sharedb.db.getOps('chatcodes', `${this.getShareDBNamespace()}-editors`, fromVersion, toVersion, opts, (err, data) => {
 				if(err) { reject(err); }
 				else { resolve(data); }
 			});

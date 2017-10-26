@@ -72,6 +72,7 @@ class ChatCodesServer {
         }
         else {
             this.db = new ShareDB.MemoryDB();
+            // this.db = new ShareDBMingo();
         }
         this.sharedb = new ShareDB({ db: this.db });
         this.wss.on('connection', (ws, req) => {
