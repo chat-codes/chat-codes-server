@@ -302,7 +302,7 @@ export class ChatCodesChannelServer extends EventEmitter {
 			});
 		});
 	}
-	private getShareDBChat():Promise<ShareDB.Doc> { return this.getShareDBObject('chat', 'json0', { 'activeUsers': {}, 'allUsers': {}, 'messages': [], }); };
+	private getShareDBChat():Promise<ShareDB.Doc> { return this.getShareDBObject('chat', 'json0', { 'activeUsers': {}, 'allUsers': {}, 'messages': [], 'actions':[]}); };
 	private getShareDBEditors():Promise<ShareDB.Doc> { return this.getShareDBObject('editors', 'json0', []); };
 	private getShareDBCursors():Promise<ShareDB.Doc> { return this.getShareDBObject('cursors', 'json0', {}); };
 	private getEditorValues(version:number):Promise<Map<string, any>> {

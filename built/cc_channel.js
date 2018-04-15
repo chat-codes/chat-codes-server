@@ -308,7 +308,7 @@ class ChatCodesChannelServer extends events_1.EventEmitter {
             });
         });
     }
-    getShareDBChat() { return this.getShareDBObject('chat', 'json0', { 'activeUsers': {}, 'allUsers': {}, 'messages': [], }); }
+    getShareDBChat() { return this.getShareDBObject('chat', 'json0', { 'activeUsers': {}, 'allUsers': {}, 'messages': [], 'actions': [] }); }
     ;
     getShareDBEditors() { return this.getShareDBObject('editors', 'json0', []); }
     ;
