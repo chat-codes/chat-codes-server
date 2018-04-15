@@ -14,7 +14,7 @@ const Logger = require("js-logger");
 const cc_channel_1 = require("./cc_channel");
 Logger.useDefaults();
 class ChatCodesServer {
-    constructor(shareDBPort, shareDBURL) {
+    constructor(shareDBPort, shareDBURL = null) {
         this.shareDBPort = shareDBPort;
         this.shareDBURL = shareDBURL;
         this.app = express();
@@ -316,8 +316,13 @@ function getCredentials(filename) {
         return JSON.parse(contents);
     });
 }
-getCredentials(options['mongocreds']).then((info) => {
-    const mongoDBURL = options['memdb'] ? null : info['url'];
-    return new ChatCodesServer(options.port, mongoDBURL);
-});
+if (options['memdb']) {
+    const server = new ChatCodesServer(options.port);
+}
+else {
+    getCredentials(options['mongocreds']).then((info) => {
+        const mongoDBURL = options['memdb'] ? null : info['url'];
+        return new ChatCodesServer(options.port, mongoDBURL);
+    });
+}
 //# sourceMappingURL=cc_server.js.map

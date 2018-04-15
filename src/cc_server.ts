@@ -21,7 +21,7 @@ export class ChatCodesServer {
 	private wss:WebSocket.Server;
 	private channels:Map<string, ChatCodesChannelServer> = new Map();
 	private channelsDoc:Promise<ShareDB.Doc>;
-	constructor(private shareDBPort:number, private shareDBURL:string) {
+	constructor(private shareDBPort:number, private shareDBURL:string=null) {
 		/*
 		Routes:
 		chat.codes/{valid_channel_name} -> redirect to cc_web
@@ -311,7 +311,11 @@ function getCredentials(filename):Promise<any> {
 	});
 }
 
-getCredentials(options['mongocreds']).then((info) => {
-	const mongoDBURL:string = options['memdb'] ? null: info['url'];
-	return new ChatCodesServer(options.port, mongoDBURL);
-});
+if(options['memdb']) {
+	const server = new ChatCodesServer(options.port);
+} else {
+	getCredentials(options['mongocreds']).then((info) => {
+		const mongoDBURL:string = options['memdb'] ? null: info['url'];
+		return new ChatCodesServer(options.port, mongoDBURL);
+	});
+}
