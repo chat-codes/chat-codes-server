@@ -21,6 +21,7 @@ export class ChatCodesChannelServer extends EventEmitter {
 		if(!this.isArchive()) {
 			this.addEditorListeners();
 		}
+
 		this.wss.on('connection', (ws) => {
 			ws.on('message', (str:string) => {
 				try {
