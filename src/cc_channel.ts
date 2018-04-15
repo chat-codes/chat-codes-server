@@ -21,6 +21,31 @@ export class ChatCodesChannelServer extends EventEmitter {
 		if(!this.isArchive()) {
 			this.addEditorListeners();
 		}
+		this.wss.on('connection', (ws) => {
+			ws.on('message', (str:string) => {
+				try {
+					const data = JSON.parse(str);
+					const {ns} = data;
+					if(data.cc === 1 && ns === this.getShareDBNamespace()) {
+						const {type} = data;
+						if(type === 'get-editors-values') {
+							const {payload, messageID} = data;
+							const version = payload;
+							this.getEditorValues(version).then((result) => {
+								ws.send(JSON.stringify({
+									messageID,
+									ns,
+									cc: 2,
+									payload: Array.from(result.values())
+								}));
+							});
+						}
+					}
+				} catch(e) {
+					console.error(e);
+				}
+			});
+		});
 	}
 	public isArchive():boolean {
 		return this.archived;
